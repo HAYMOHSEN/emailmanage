@@ -155,7 +155,7 @@
     const lib = await loadPdfJs();
     const data = new Uint8Array(await ED.base.arrayBuffer());
     const base = document.baseURI;
-    ED.pdf = await lib.getDocument({ data, standardFontDataUrl: new URL('lib/pdfjs/standard_fonts/', base).href, wasmUrl: new URL('lib/pdfjs/wasm/', base).href, iccUrl: new URL('lib/pdfjs/iccs/', base).href, isEvalSupported: false }).promise;
+    ED.pdf = await lib.getDocument({ data, standardFontDataUrl: new URL('lib/pdfjs/standard_fonts/', base).href, wasmUrl: new URL('lib/pdfjs/wasm/', base).href, iccUrl: new URL('lib/pdfjs/iccs/', base).href, isEvalSupported: false, useSystemFonts: false }).promise;
     const pagesEl = $('#edPages'); pagesEl.innerHTML = '';
     for (let i = 1; i <= ED.pdf.numPages; i++) {
       const page = await ED.pdf.getPage(i);

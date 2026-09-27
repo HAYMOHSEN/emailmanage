@@ -37,9 +37,17 @@
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   // Name to use in a reply written in `lang` (handles Arabic names when replying in English)
+  const ORG_EN = /\b(office|team|department|dept\.?|committee|registrar|editorial|admin|administration|group|center|centre|faculty|school|university|unit|service|services|support|sales|hr|newsletter|council|board|secretariat|library|deanship|dean's|accounts|finance|it)\b/i;
+  const ORG_AR = /(مكتب|قسم|لجنة|إدارة|دائرة|وحدة|مركز|فريق|هيئة|كلية|جامعة|عمادة|أمانة|مجلس|مكتبة|شؤون|خدمة|الدعم|المحاسبة|المالية)/;
+  function isOrgName(name) { name = String(name || ''); return ORG_EN.test(name) || ORG_AR.test(name); }
   function nameFor(email, lang) {
     const name = (email.from && email.from.name) || '';
     const addr = (email.from && email.from.address) || '';
+    if (isOrgName(name)) {
+      const first = name.split(/\s+[–—-]\s+|,|\|/)[0].trim();
+      if (lang === 'en' && /[\u0600-\u06FF]/.test(first)) return 'Colleagues';
+      return first || (lang === 'ar' ? 'السادة' : 'Colleagues');
+    }
     if (lang === 'en' && /[\u0600-\u06FF]/.test(name)) {
       const parts = addr.split('@')[0].split(/[._\-]+/).filter(p => /^[a-z]+$/i.test(p));
       if (parts.length >= 2) return parts.map(p => p.length === 1 ? p.toUpperCase() + '.' : cap(p)).join(' ');
@@ -485,12 +493,14 @@
       onDate: dates.length ? L.onDate.replace('{date}', fmtDate(dates[0].date, lang, false)) : ''
     };
     const fill = (s) => s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
+    const org = isOrgName(email.from && email.from.name);
+    const orgGreet = { en: { formal: 'Dear {name},', friendly: 'Hello {name},', brief: 'Hello {name},' }, ar: { formal: 'السلام عليكم ورحمة الله وبركاته،\n\nالسادة {name} المحترمين،\n\nتحية طيبة وبعد،', friendly: 'تحية طيبة،', brief: 'تحية طيبة،' } };
     const list = (L.intents[intent] || L.intents.general).map(([title, body]) => {
       let text = fill(body);
       if (tone === 'brief') {
         text = text.split(/(?<=[.!؟?])\s+/).slice(0, 2).join(' ');
       }
-      const greet = fill(L.greet[tone] || L.greet.formal);
+      const greet = fill(org ? (orgGreet[lang] || orgGreet.en)[tone] || orgGreet.en.formal : (L.greet[tone] || L.greet.formal));
       const close = fill(L.close[tone] || L.close.formal);
       return { title, body: `${greet}\n\n${text}\n\n${close}`.replace(/\n{3,}/g, '\n\n').trim() };
     });
@@ -600,5 +610,5 @@
     return aiComplete(cfg, system, user, 1500);
   }
 
-  global.Engine = { detectLang, firstName, nameFor, scoreEmail, suggestDue, DEFAULT_PRIORITIES, priorityLevels, extractDates, extractPoints, detectIntent, smartReplies, TEMPLATES, fillTemplate, AI_DEFAULTS, aiReplies, aiRefine, aiComplete, normalizeDigits, fmtDate };
+  global.Engine = { detectLang, firstName, nameFor, isOrgName, scoreEmail, suggestDue, DEFAULT_PRIORITIES, priorityLevels, extractDates, extractPoints, detectIntent, smartReplies, TEMPLATES, fillTemplate, AI_DEFAULTS, aiReplies, aiRefine, aiComplete, normalizeDigits, fmtDate };
 })(window);

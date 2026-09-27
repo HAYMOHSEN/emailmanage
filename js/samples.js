@@ -27,12 +27,12 @@
     const png = makePng();
     const list = [
       {
-        subject: 'URGENT: Accreditation self-study report — final input needed by Thursday',
+        subject: 'URGENT: Accreditation self-study report — final input needed within 3 days',
         from: { name: 'Dean\'s Office – School of Applied Technical Sciences', address: 'dean.sats@university.edu' },
         to: [{ name: 'Faculty', address: 'faculty-me@university.edu' }], cc: [], date: daysAgo(0, 8),
         textBody: `Dear colleagues,
 
-As discussed in the council meeting, the ABET self-study report must be submitted to the accreditation office by Thursday ${fmt(inDays(3), 'en')}.
+As discussed in the council meeting, the ABET self-study report must be submitted to the accreditation office by ${fmt(inDays(3), 'en')}.
 
 Please send me the following as soon as possible:
 1. Updated course files for your Fall courses (syllabus, sample exams, assessment rubrics).

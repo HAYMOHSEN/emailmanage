@@ -129,7 +129,7 @@
         <div><button class="btn sm btn-danger" id="bkClear">${icon('trash', 'sm')}${t('clear_all')}</button></div>
       </div></div>
 
-      <div class="card"><div class="card-head"><h3>${icon('info')}${t('settings_about')}</h3></div><div class="card-body form"><p style="margin:0;font-size:13px;color:var(--text-2)">${t('about_text')}</p><div class="inline-note">${t('version')} ${App.APP_VERSION} · ${t('installed_hint')}</div></div></div>
+      <div class="card"><div class="card-head"><h3>${icon('info')}${t('settings_about')}</h3></div><div class="card-body form"><p style="margin:0;font-size:13px;color:var(--text-2)">${t('about_text')}</p><div class="inline-note">${t('version')} ${App.APP_VERSION} · ${t('installed_hint')}</div><div><a href="privacy.html" target="_blank" rel="noopener">${t('privacy_policy')}</a></div></div></div>
     </div>`;
 
     // bindings
