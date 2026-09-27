@@ -71,7 +71,7 @@
       confirm: 'Confirm', undo: 'Undo', deleted: 'Deleted', restored: 'Restored',
       due_date_label: 'Deadline', due_date_placeholder: 'Choose date and time',
       followup_label: 'Follow-up date', set_followup: 'Set follow-up reminder',
-      kb_help: 'Shortcuts: J/K next/previous · R reply · 1–4 priority · E mark replied · Del delete · / search',
+      kb_help: 'Shortcuts: J/K next/previous · R reply · 1–9 priority level · E mark replied · Del delete · / search',
       installed_hint: 'Tip: install this app from your browser menu to use it like a desktop app.',
       unread: 'New', all_caught_up: 'All caught up!', all_caught_up_sub: 'No emails match this filter.',
       week: 'Week', count: 'Count', hours_short: 'h', days_short: 'd', minutes_short: 'm',
@@ -89,6 +89,9 @@
       other_type_hint: 'This file type is edited with its own program (e.g. Word or Excel): save it to your computer, edit it there, then upload the edited version here so it stays with this email.',
       files_to_send: 'Files to send with your reply', files_hint: 'Mail apps cannot receive attachments from a link, so save the files first and then attach them in your mail app — or use Share to send them straight to a supported app.', save_selected: 'Save selected to folder…', download_selected: 'Download selected', share_files: 'Share…', no_files_selected: 'Select at least one file.', folder_saved: '{n} file(s) saved to {f}', original_badge: 'original',
       attachments_hint: 'Click an attachment to open it — PDFs, images and text files can be edited and signed here.',
+      settings_levels: 'Priority levels', settings_levels_help: 'Rename, recolor, reorder or add your own levels. The first level is the most urgent. “Auto-assign from score” is the minimum score an email needs to get that level automatically; the last level catches everything else.', add_level: 'Add level', reset_levels: 'Reset to defaults', level_color: 'Color', level_name_en: 'Name (English)', level_name_ar: 'Name (Arabic)', level_hours: 'Reply within (hours)', level_min_score: 'Auto-assign from score', level_fallback: 'everything else', delete_level_confirm: 'Delete the level “{n}”? Emails using it will move to the nearest level.', reset_levels_confirm: 'Restore the default four levels? Your custom levels will be removed.',
+      quick_note: 'Quick note', notes_private_hint: 'Notes stay on this device and are never sent with your reply unless you choose to.', note_text_placeholder: 'Write a note about this email… (Ctrl+Enter to add)', add_note: 'Add note', add_image: 'Image', add_file: 'File', record_voice: 'Record voice', stop_recording: 'Stop', voice_note: 'Voice note', notes_drop_hint: 'You can also drop files here or paste a screenshot (Ctrl+V).', notes_empty: 'No notes yet.', note_added: 'Note added', note_delete_confirm: 'Delete this note?', note_kind_text: 'Note', note_kind_image: 'Image', note_kind_file: 'File', note_kind_audio: 'Voice', note_badge: 'note', mic_unsupported: 'Voice recording is not supported here.', mic_denied: 'microphone access was denied', mic_error: 'Could not record: {e}', mic_empty: 'The recording was empty.',
+      drop_notes_title: 'Drop to add to the notes', drop_notes_sub: 'Images, documents and audio files are attached to this email as notes',
       draft_badge: 'Draft',
       manual_title: 'Add an email manually', manual_hint: 'Use this when the email cannot be dragged (e.g. from a phone screenshot).'
     },
@@ -159,7 +162,7 @@
       confirm: 'تأكيد', undo: 'تراجع', deleted: 'تم الحذف', restored: 'تمت الاستعادة',
       due_date_label: 'الموعد النهائي', due_date_placeholder: 'اختر التاريخ والوقت',
       followup_label: 'تاريخ المتابعة', set_followup: 'تعيين تذكير بالمتابعة',
-      kb_help: 'اختصارات: J/K التالي/السابق · R رد · 1–4 الأولوية · E تم الرد · Del حذف · / بحث',
+      kb_help: 'اختصارات: J/K التالي/السابق · R رد · 1–9 مستوى الأولوية · E تم الرد · Del حذف · / بحث',
       installed_hint: 'نصيحة: ثبّت هذا التطبيق من قائمة المتصفح لاستخدامه كتطبيق سطح مكتب.',
       unread: 'جديد', all_caught_up: 'لا يوجد شيء هنا!', all_caught_up_sub: 'لا توجد رسائل مطابقة لهذا التصفية.',
       week: 'الأسبوع', count: 'العدد', hours_short: 'س', days_short: 'ي', minutes_short: 'د',
@@ -177,6 +180,9 @@
       other_type_hint: 'هذا النوع من الملفات يُعدَّل ببرنامجه الخاص (مثل Word أو Excel): احفظه على جهازك، وعدّله هناك، ثم ارفع النسخة المعدّلة هنا لتبقى مع هذه الرسالة.',
       files_to_send: 'ملفات لإرسالها مع ردك', files_hint: 'لا تستطيع تطبيقات البريد استلام المرفقات عبر رابط، لذا احفظ الملفات أولاً ثم أرفقها في تطبيق البريد — أو استخدم «مشاركة» لإرسالها مباشرة إلى تطبيق يدعم ذلك.', save_selected: 'حفظ المحدد في مجلد…', download_selected: 'تنزيل المحدد', share_files: 'مشاركة…', no_files_selected: 'اختر ملفاً واحداً على الأقل.', folder_saved: 'تم حفظ {n} ملف في {f}', original_badge: 'أصلي',
       attachments_hint: 'انقر على المرفق لفتحه — يمكن تعديل ملفات PDF والصور والملفات النصية والتوقيع عليها هنا.',
+      settings_levels: 'مستويات الأولوية', settings_levels_help: 'أعد تسمية المستويات أو لوّنها أو رتّبها أو أضف مستوياتك الخاصة. المستوى الأول هو الأكثر استعجالاً. «التعيين التلقائي من الدرجة» هو الحد الأدنى للدرجة التي تحصل بها الرسالة على هذا المستوى تلقائياً؛ والمستوى الأخير يستوعب ما تبقى.', add_level: 'إضافة مستوى', reset_levels: 'استعادة الافتراضي', level_color: 'اللون', level_name_en: 'الاسم (إنجليزي)', level_name_ar: 'الاسم (عربي)', level_hours: 'الرد خلال (ساعات)', level_min_score: 'التعيين التلقائي من الدرجة', level_fallback: 'ما تبقى', delete_level_confirm: 'هل تريد حذف المستوى «{n}»؟ ستنتقل الرسائل التي تستخدمه إلى أقرب مستوى.', reset_levels_confirm: 'هل تريد استعادة المستويات الأربعة الافتراضية؟ ستُحذف مستوياتك المخصصة.',
+      quick_note: 'ملاحظة سريعة', notes_private_hint: 'تبقى الملاحظات على هذا الجهاز ولا تُرسل مع ردك إلا إذا اخترت ذلك.', note_text_placeholder: 'اكتب ملاحظة حول هذه الرسالة… (Ctrl+Enter للإضافة)', add_note: 'إضافة ملاحظة', add_image: 'صورة', add_file: 'ملف', record_voice: 'تسجيل صوتي', stop_recording: 'إيقاف', voice_note: 'ملاحظة صوتية', notes_drop_hint: 'يمكنك أيضاً إفلات الملفات هنا أو لصق لقطة شاشة (Ctrl+V).', notes_empty: 'لا توجد ملاحظات بعد.', note_added: 'تمت إضافة الملاحظة', note_delete_confirm: 'هل تريد حذف هذه الملاحظة؟', note_kind_text: 'ملاحظة', note_kind_image: 'صورة', note_kind_file: 'ملف', note_kind_audio: 'صوت', note_badge: 'ملاحظة', mic_unsupported: 'التسجيل الصوتي غير مدعوم هنا.', mic_denied: 'تم رفض الوصول إلى الميكروفون', mic_error: 'تعذّر التسجيل: {e}', mic_empty: 'التسجيل كان فارغاً.',
+      drop_notes_title: 'أفلت للإضافة إلى الملاحظات', drop_notes_sub: 'تُرفق الصور والمستندات والملفات الصوتية بهذه الرسالة كملاحظات',
       draft_badge: 'مسودة',
       manual_title: 'إضافة رسالة يدوياً', manual_hint: 'استخدم هذا عندما يتعذر سحب الرسالة (مثلاً من لقطة شاشة على الهاتف).'
     }

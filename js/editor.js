@@ -98,8 +98,9 @@
   }
 
   /* ---------- open / close ---------- */
-  async function open(email, att) {
+  async function open(email, att, opts) {
     buildDom();
+    ED.noteItem = opts && opts.note ? opts.note : null;
     ED.email = email; ED.att = att; ED.kind = kindOf(att); ED.ann = []; ED.undo = []; ED.redo = []; ED.sel = null; ED.dirty = false; ED.pages = []; ED.pdf = null; ED.img = null; ED.drawing = null; ED.userZoomed = false;
     root.hidden = false; ED.open = true; root.className = 'editor tool-' + ED.tool + ' kind-' + ED.kind;
     $('#edName').textContent = att.name;
@@ -110,7 +111,7 @@
     let file = await DB.getFile(att.id);
     if (!file) { toast(t('file_missing'), 'error'); close(true); return; }
     ED.base = file.blob; ED.baseId = att.id;
-    if (att.baseId && att.annotations) {
+    if (att.baseId && att.annotations && !ED.noteItem) {
       const b = await DB.getFile(att.baseId);
       if (b) { ED.base = b.blob; ED.baseId = att.baseId; ED.ann = JSON.parse(JSON.stringify(att.annotations)); }
     }
@@ -518,6 +519,20 @@
     try {
       const out = await buildOutput(); if (!out) return;
       const extra = (ED.kind === 'pdf' || ED.kind === 'image') ? { annotations: JSON.parse(serialize()), baseId: ED.baseId } : {};
+      if (ED.noteItem) {
+        // notes: overwrite the note's file in place, then reload so further edits build on the saved result
+        const it = ED.noteItem;
+        const newName = it.name.replace(/\.[^.]+$/, '') + '.' + out.ext;
+        await DB.putFile({ id: it.id, emailId: ED.email.id, name: newName, type: out.blob.type, blob: out.blob, note: true });
+        it.name = newName; it.type = out.blob.type; it.size = out.blob.size; it.editedAt = new Date().toISOString();
+        await App.saveEmail(ED.email);
+        toast(t('saved_as', { f: it.name }), 'success');
+        ED.dirty = false;
+        if (S.selectedId === ED.email.id) App.renderTabContent();
+        const reopenAtt = { id: it.id, name: it.name, type: it.type, size: it.size };
+        const email = ED.email; ED.open = false; root.hidden = true;
+        return open(email, reopenAtt, { note: it });
+      }
       if (ED.att.baseId && ED.att.annotations) {
         await App.updateAttachmentVersion(ED.email, ED.att, out.blob, extra);
       } else {

@@ -15,9 +15,9 @@
     const q = S.search.trim().toLowerCase();
     const emails = S.emails.filter(e => !q || [e.subject, e.from.name, e.from.address].join(' ').toLowerCase().includes(q));
     root.innerHTML = cols.map(st => {
-      const list = emails.filter(e => e.status === st).sort((a, b) => a.priority - b.priority || (new Date(a.dueAt || 8e15) - new Date(b.dueAt || 8e15)));
+      const list = emails.filter(e => e.status === st).sort((a, b) => App.prioRank(a.priority) - App.prioRank(b.priority) || (new Date(a.dueAt || 8e15) - new Date(b.dueAt || 8e15)));
       return `<div class="col" data-col="${st}"><div class="col-head"><span class="dot" style="background:var(--s-${st})"></span>${t('status_' + st)}<span class="cnt">${list.length}</span></div>
-        <div class="col-body">${list.map(e => { const di = dueInfo(e); return `<div class="kcard p${e.priority}" draggable="true" data-id="${e.id}"><div class="ks" dir="auto">${esc(e.subject || t('no_subject'))}</div><div class="kf" dir="auto">${esc(e.from.name || e.from.address)}</div><div class="kr"><span class="pill p${e.priority}">${t('priority_short_' + e.priority)}</span><span class="due ${di.cls}" data-due-for="${e.id}">${icon(di.icon, 'sm')}<span>${esc(di.text)}</span></span></div></div>`; }).join('')}</div></div>`;
+        <div class="col-body">${list.map(e => { const di = dueInfo(e); return `<div class="kcard p${e.priority}" draggable="true" data-id="${e.id}"><div class="ks" dir="auto">${esc(e.subject || t('no_subject'))}</div><div class="kf" dir="auto">${esc(e.from.name || e.from.address)}</div><div class="kr"><span class="pill p${e.priority}" title="${esc(App.prioName(e.priority))}">${App.prioShort(e.priority)}</span><span class="due ${di.cls}" data-due-for="${e.id}">${icon(di.icon, 'sm')}<span>${esc(di.text)}</span></span></div></div>`; }).join('')}</div></div>`;
     }).join('');
     $$('.kcard', root).forEach(card => {
       card.addEventListener('dragstart', (ev) => { ev.dataTransfer.setData('application/x-em-card', card.dataset.id); ev.dataTransfer.setData('text/plain', card.dataset.id); ev.dataTransfer.effectAllowed = 'move'; card.classList.add('dragging'); });
@@ -45,7 +45,8 @@
     const onTime = replied.filter(e => !e.dueAt || new Date(e.repliedAt) <= new Date(e.dueAt));
     const avgMs = replied.length ? replied.reduce((s, e) => s + Math.max(0, new Date(e.repliedAt) - new Date(e.date || e.addedAt)), 0) / replied.length : 0;
     const avgTxt = replied.length ? (avgMs < 3600e3 ? Math.round(avgMs / 60000) + ' ' + t('minutes_short') : avgMs < 86400e3 ? (avgMs / 3600e3).toFixed(1) + ' ' + t('hours_short') : (avgMs / 86400e3).toFixed(1) + ' ' + t('days_short')) : '—';
-    const byP = [1, 2, 3, 4].map(p => open.filter(e => e.priority === p).length);
+    const levels = App.prios();
+    const byP = levels.map(l => open.filter(e => String(e.priority) === String(l.id)).length);
     const byS = ['todo', 'drafting', 'replied', 'awaiting'].map(s => all.filter(e => e.status === s).length);
     const senders = {};
     all.forEach(e => { const k = e.from.address || e.from.name || '?'; senders[k] = senders[k] || { name: e.from.name || e.from.address, n: 0, replied: 0 }; senders[k].n++; if (e.status === 'replied') senders[k].replied++; });
@@ -67,7 +68,7 @@
         <div class="kpi"><div class="v">${all.filter(e => e.status === 'awaiting').length}</div><div class="l">${t('status_awaiting')}</div></div>
       </div>
       <div class="stats-grid">
-        <div class="card"><div class="card-head"><h3>${icon('flag')}${t('stats_by_priority')}</h3></div><div class="card-body bars">${[1, 2, 3, 4].map((p, i) => bar(t('priority_' + p), byP[i], Math.max(1, ...byP), `var(--p${p})`)).join('')}</div></div>
+        <div class="card"><div class="card-head"><h3>${icon('flag')}${t('stats_by_priority')}</h3></div><div class="card-body bars">${levels.map((l, i) => bar(App.prioName(l.id), byP[i], Math.max(1, ...byP), l.color)).join('')}</div></div>
         <div class="card"><div class="card-head"><h3>${icon('board')}${t('stats_by_status')}</h3></div><div class="card-body bars">${['todo', 'drafting', 'replied', 'awaiting'].map((s, i) => bar(t('status_' + s), byS[i], Math.max(1, ...byS), `var(--s-${s})`)).join('')}</div></div>
         <div class="card"><div class="card-head"><h3>${icon('user')}${t('stats_top_senders')}</h3></div><div class="card-body bars">${top.map(s => bar(s.name, s.n, top[0].n, 'var(--accent)')).join('')}</div></div>
         <div class="card"><div class="card-head"><h3>${icon('chart')}${t('stats_last_weeks')}</h3></div><div class="card-body"><div class="cols-chart">${weeks.map(w => `<div class="c"><div class="b" style="height:${Math.round(w.n / maxW * 100)}%"><span>${w.n || ''}</span></div><div class="x">${new Intl.DateTimeFormat(App.locale(), { day: 'numeric', month: 'short' }).format(w.start)}</div></div>`).join('')}</div></div></div>
@@ -103,8 +104,10 @@
       <div class="card"><div class="card-head"><h3>${icon('flag')}${t('settings_priority')}</h3></div><div class="card-body form">
         <div class="field"><label>${t('settings_vip')}</label><textarea class="textarea" data-set-list="vipSenders" style="min-height:90px">${esc((s.vipSenders || []).join('\n'))}</textarea></div>
         <div class="field"><label>${t('settings_keywords')}</label><textarea class="textarea" data-set-list="customKeywords" style="min-height:70px">${esc((s.customKeywords || []).join('\n'))}</textarea></div>
-        <div class="field"><label>${t('settings_due_defaults')}</label><div class="form-row">${[1, 2, 3, 4].map(p => `<div class="field"><label><span class="pill p${p}">${t('priority_short_' + p)}</span> ${t('priority_' + p)}</label><input class="input" type="number" min="1" max="720" data-set-due="${p}" value="${esc(s.dueHours[p])}"></div>`).join('')}</div></div>
       </div></div>
+
+      <div class="card wide"><div class="card-head"><div><h3>${icon('flag')}${t('settings_levels')}</h3><div class="sub">${t('settings_levels_help')}</div></div><span class="spacer"></span><button class="btn sm" id="lvlAdd">${icon('plus', 'sm')}${t('add_level')}</button><button class="btn sm btn-ghost" id="lvlReset">${icon('refresh', 'sm')}${t('reset_levels')}</button></div>
+        <div class="card-body"><div class="levels" id="levels">${renderLevelRows()}</div></div></div>
 
       <div class="card"><div class="card-head"><div><h3>${icon('sparkles')}${t('settings_ai')}</h3><div class="sub">${t('settings_ai_help')}</div></div></div><div class="card-body form">
         <div class="form-row">
@@ -143,7 +146,7 @@
       if (inp.dataset.setList === 'vipSenders' || inp.dataset.setList === 'customKeywords' || inp.dataset.setList === 'myAddresses') await rescoreAll();
       toast(t('saved'), 'success');
     }));
-    $$('[data-set-due]', root).forEach(inp => inp.addEventListener('change', () => { const v = Math.max(1, +inp.value || 1); S.settings.dueHours[inp.dataset.setDue] = v; App.saveSettings(); toast(t('saved'), 'success'); }));
+    bindLevelEditor(root);
     $$('[data-ai]', root).forEach(inp => inp.addEventListener('change', () => {
       S.settings.ai[inp.dataset.ai] = inp.value.trim(); App.saveSettings();
       if (inp.dataset.ai === 'provider') { $('#aiUrlField', root).hidden = inp.value !== 'custom'; $('[data-ai="model"]', root).placeholder = (Engine.AI_DEFAULTS[inp.value] || {}).model || ''; }
@@ -174,6 +177,57 @@
     showBackupName();
   }
   App.renderSettings = renderSettings;
+
+  /* ---------- priority level editor ---------- */
+  function renderLevelRows() {
+    const L = S.settings.priorities;
+    return `<div class="level-head"><span></span><span>${t('level_color')}</span><span>${t('level_name_en')}</span><span>${t('level_name_ar')}</span><span>${t('level_hours')}</span><span>${t('level_min_score')}</span><span></span></div>` +
+      L.map((l, i) => `<div class="level-row" data-i="${i}">
+        <span class="pill p${l.id}">${App.prioShort(l.id)}</span>
+        <input type="color" data-lv="color" value="${esc(l.color || '#6f7d94')}" title="${t('level_color')}">
+        <input class="input" data-lv="en" value="${esc(l.name.en || '')}" placeholder="Name">
+        <input class="input" data-lv="ar" value="${esc(l.name.ar || '')}" placeholder="الاسم" dir="rtl">
+        <input class="input" type="number" min="1" max="2000" data-lv="hours" value="${esc(l.hours)}">
+        ${i < L.length - 1 ? `<input class="input" type="number" step="0.5" data-lv="minScore" value="${esc(l.minScore == null ? '' : l.minScore)}">` : `<span class="inline-note">${t('level_fallback')}</span>`}
+        <span class="level-actions"><button class="icon-btn sm" data-lv-act="up" ${i === 0 ? 'disabled' : ''} title="↑">${icon('chevron', 'sm')}</button><button class="icon-btn sm" data-lv-act="down" ${i === L.length - 1 ? 'disabled' : ''} title="↓">${icon('chevron', 'sm')}</button><button class="icon-btn sm" data-lv-act="del" ${L.length <= 2 ? 'disabled' : ''} style="color:var(--danger)" title="${t('delete')}">${icon('trash', 'sm')}</button></span>
+      </div>`).join('');
+  }
+  function normalizeLevels() {
+    const L = S.settings.priorities;
+    L.forEach((l, i) => { l.hours = Math.max(1, +l.hours || 72); if (i === L.length - 1) l.minScore = null; else if (l.minScore === '' || l.minScore === null || l.minScore === undefined || isNaN(+l.minScore)) l.minScore = null; else l.minScore = +l.minScore; if (!l.name.en && !l.name.ar) l.name.en = 'Level ' + (i + 1); });
+    // thresholds must decrease with rank: fill gaps sensibly
+    for (let i = 0; i < L.length - 1; i++) { if (L[i].minScore === null) { const prev = i > 0 ? L[i - 1].minScore : 10; const next = L[i + 1].minScore; L[i].minScore = next !== null && next !== undefined && i + 1 < L.length - 1 ? (prev + next) / 2 : Math.max(0, prev - 2); } }
+  }
+  async function levelsChanged(removedRank) {
+    normalizeLevels(); App.saveSettings(); App.applyPriorityStyles();
+    await App.reassignPriorities(removedRank);
+    App.renderAll(); renderSettings(); toast(t('saved'), 'success');
+  }
+  function bindLevelEditor(root) {
+    const L = S.settings.priorities;
+    $$('.level-row [data-lv]', root).forEach(inp => inp.addEventListener('change', () => {
+      const i = +inp.closest('.level-row').dataset.i; const l = L[i]; const k = inp.dataset.lv;
+      if (k === 'en' || k === 'ar') l.name[k] = inp.value.trim(); else if (k === 'color') l.color = inp.value; else if (k === 'hours') l.hours = +inp.value; else if (k === 'minScore') l.minScore = inp.value === '' ? null : +inp.value;
+      levelsChanged();
+    }));
+    $$('.level-row [data-lv-act]', root).forEach(b => b.onclick = async () => {
+      const i = +b.closest('.level-row').dataset.i; const act = b.dataset.lvAct;
+      if (act === 'up' && i > 0) { [L[i - 1], L[i]] = [L[i], L[i - 1]]; }
+      else if (act === 'down' && i < L.length - 1) { [L[i + 1], L[i]] = [L[i], L[i + 1]]; }
+      else if (act === 'del') { if (L.length <= 2) return; if (!(await App.confirmDialog(t('delete_level_confirm', { n: App.prioName(L[i].id) }), { danger: true, okLabel: t('delete') }))) return; L.splice(i, 1); }
+      levelsChanged(act === 'del' ? i : undefined);
+    });
+    $('#lvlAdd', root).onclick = () => {
+      const id = Math.max(0, ...L.map(l => +l.id)) + 1;
+      const last = L[L.length - 1];
+      L.splice(L.length - 1, 0, { id, name: { en: 'New level', ar: 'مستوى جديد' }, color: '#0b7285', hours: Math.round((+last.hours || 168) / 2), minScore: null });
+      levelsChanged();
+    };
+    $('#lvlReset', root).onclick = async () => {
+      if (!(await App.confirmDialog(t('reset_levels_confirm'), { danger: true, okLabel: t('ok') }))) return;
+      S.settings.priorities = JSON.parse(JSON.stringify(Engine.DEFAULT_PRIORITIES)); levelsChanged(0);
+    };
+  }
 
   async function rescoreAll() {
     for (const e of S.emails) {

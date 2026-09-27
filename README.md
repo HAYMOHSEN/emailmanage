@@ -28,6 +28,8 @@ A privacy-first web app (PWA) for the Microsoft Store: drag emails in, get them 
 ## الميزات
 
 - ترتيب الأولوية تلقائياً (حرجة / عالية / عادية / منخفضة) مع شرح السبب، وإمكانية التعديل اليدوي.
+- **مستويات أولوية قابلة للتخصيص**: من الإعدادات يمكن إعادة تسمية المستويات (عربي/إنجليزي)، تغيير ألوانها، ترتيبها، إضافة مستويات جديدة أو حذفها، وضبط مدة الرد الافتراضية وحدّ الدرجة الذي يعيّن المستوى تلقائياً.
+- **ملاحظات غنية على كل رسالة**: ملاحظة سريعة + سجل ملاحظات زمني يقبل نصاً وصوراً وملفات وتسجيلات صوتية من الميكروفون (تُسجَّل داخل التطبيق وتُشغَّل فيه)، مع الإفلات واللصق (Ctrl+V) والبحث فيها، وتبقى كلها على الجهاز.
 - موعد للرد مقترح تلقائياً حسب الأولوية والتواريخ المذكورة في الرسالة، مع عدّاد تنازلي يتغير لونه، وتنبيهات سطح المكتب قبل الموعد وعند التأخر.
 - عرض كامل للرسالة (HTML والصور المضمّنة والمرفقات) داخل إطار معزول وآمن، مع حجب الصور الخارجية افتراضياً.
 - **ردود ذكية محلية**: يتعرّف التطبيق على نوع الرسالة (اجتماع، طلب مستند، استفسار، مهمة بموعد، شكر، دعوة، مشكلة، استفسار طالب، متابعة) ويقترح 3 ردود بأسلوب رسمي/ودّي/مختصر بالعربية أو الإنجليزية، بالإضافة إلى قائمة «نقاط يجب الرد عليها».
@@ -52,6 +54,7 @@ js/engine.js      priority scoring, date extraction, smart replies, AI providers
 js/samples.js     demo emails
 js/app.js         core UI (inbox, detail, popovers, notifications, import)
 js/editor.js      attachment viewer/editor (pdf.js + pdf-lib, annotations, versions)
+js/notes.js       rich notes (text, images, files, voice recordings)
 js/reply.js       reply tab (points, smart/AI replies, composer, files to send)
 js/extras.js      board, statistics, settings, backup
 lib/              pdf.js (Apache-2.0) and pdf-lib (MIT) — bundled for offline use

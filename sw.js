@@ -1,9 +1,9 @@
 /* Email Management — service worker (offline app shell) */
-const CACHE = 'email-management-v1.1.0';
+const CACHE = 'email-management-v1.2.0';
 const SHELL = [
   './', './index.html', './manifest.json', './css/styles.css',
   './js/i18n.js', './js/db.js', './js/mime.js', './js/msg.js', './js/engine.js', './js/samples.js', './js/app.js', './js/reply.js', './js/extras.js',
-  './js/editor.js', './lib/pdfjs/pdf.min.mjs', './lib/pdfjs/pdf.worker.min.mjs', './lib/pdf-lib.min.js',
+  './js/editor.js', './js/notes.js', './lib/pdfjs/pdf.min.mjs', './lib/pdfjs/pdf.worker.min.mjs', './lib/pdf-lib.min.js',
   './icons/favicon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'
 ];
 

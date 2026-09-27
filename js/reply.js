@@ -114,19 +114,20 @@
     $$('[data-files]', el).forEach(b => b.onclick = () => filesAction(e, el, b.dataset.files));
   }
 
-  function sendableFiles(e) { return (e.attachments || []).filter(a => a.editedFrom || !a.inline); }
+  function sendableFiles(e) { return (e.attachments || []).filter(a => a.editedFrom || !a.inline).concat((e.noteItems || []).filter(n => n.kind !== 'text').map(n => ({ id: n.id, name: n.name, type: n.type, size: n.size, note: true }))); }
   function filesCard(e) {
     const files = sendableFiles(e);
     if (!files.length) return '';
     const canShare = !!(navigator.canShare && navigator.share);
     return `<div class="card" style="margin-bottom:14px" id="filesCard"><div class="card-head"><div><h3>${icon('clip')}${t('files_to_send')}</h3><div class="sub">${t('files_hint')}</div></div></div>
-      <div class="card-body"><div class="files-list">${files.map(a => `<label class="file-row"><input type="checkbox" data-file="${a.id}" ${a.editedFrom ? 'checked' : ''}><span class="nm" dir="auto">${esc(a.name)}</span><span class="pill ${a.editedFrom ? 'st-replied' : 'tag'}">${a.editedFrom ? t('edited_badge') : t('original_badge')}</span><span class="sz">${App.fmtSize(a.size)}</span></label>`).join('')}</div>
+      <div class="card-body"><div class="files-list">${files.map(a => `<label class="file-row"><input type="checkbox" data-file="${a.id}" ${a.editedFrom ? 'checked' : ''}><span class="nm" dir="auto">${esc(a.name)}</span><span class="pill ${a.editedFrom ? 'st-replied' : a.note ? 'st-awaiting' : 'tag'}">${a.editedFrom ? t('edited_badge') : a.note ? t('note_badge') : t('original_badge')}</span><span class="sz">${App.fmtSize(a.size)}</span></label>`).join('')}</div>
       <div class="composer-toolbar" style="margin-top:10px"><button class="btn sm btn-primary" data-files="folder">${icon('folder', 'sm')}${t('save_selected')}</button><button class="btn sm" data-files="download">${icon('download', 'sm')}${t('download_selected')}</button>${canShare ? `<button class="btn sm" data-files="share">${icon('share', 'sm')}${t('share_files')}</button>` : ''}</div></div></div>`;
   }
   async function selectedFiles(e, el) {
     const ids = $$('[data-file]:checked', el).map(x => x.dataset.file);
     const out = [];
-    for (const id of ids) { const a = e.attachments.find(x => x.id === id); const f = await DB.getFile(id); if (a && f) out.push({ a, blob: f.blob }); }
+    const all = sendableFiles(e);
+    for (const id of ids) { const a = all.find(x => x.id === id); const f = await DB.getFile(id); if (a && f) out.push({ a, blob: f.blob }); }
     return out;
   }
   async function filesAction(e, el, act) {

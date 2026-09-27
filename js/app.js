@@ -8,7 +8,7 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.2.0';
   const DEFAULT_SETTINGS = {
     lang: null, theme: 'system', myName: '', myRole: '', signature: '', officeHours: '', myAddresses: [],
     vipSenders: [], customKeywords: [], dueHours: { 1: 6, 2: 24, 3: 72, 4: 168 }, reminderMinutes: 60, followUpDays: 3,
@@ -102,9 +102,39 @@
     merged.dueHours = Object.assign({}, DEFAULT_SETTINGS.dueHours, s.dueHours || {});
     merged.ai = Object.assign({}, DEFAULT_SETTINGS.ai, s.ai || {});
     if (!merged.lang) merged.lang = (navigator.language || 'en').toLowerCase().startsWith('ar') ? 'ar' : 'en';
+    if (!Array.isArray(merged.priorities) || merged.priorities.length < 2) {
+      merged.priorities = JSON.parse(JSON.stringify(Engine.DEFAULT_PRIORITIES));
+      merged.priorities.forEach(l => { if (s.dueHours && s.dueHours[l.id]) l.hours = +s.dueHours[l.id]; });
+    }
+    merged.priorities.forEach((l, i) => { l.id = Number(l.id); l.name = l.name || {}; if (typeof l.name === 'string') l.name = { en: l.name, ar: l.name }; if (l.minScore !== null && l.minScore !== undefined) l.minScore = Number(l.minScore); if (i === merged.priorities.length - 1) l.minScore = null; });
     S.settings = merged;
     return merged;
   }
+  /* ---------- priority levels ---------- */
+  function prios() { return Engine.priorityLevels(S.settings); }
+  function prio(id) { const l = prios(); return l.find(x => String(x.id) === String(id)) || l[l.length - 1]; }
+  function prioRank(id) { const l = prios(); const i = l.findIndex(x => String(x.id) === String(id)); return i === -1 ? l.length - 1 : i; }
+  function prioName(id) { const l = prio(id); const lang = I18N.getLang(); return (l.name && (l.name[lang] || l.name.en || l.name.ar)) || String(id); }
+  function prioShort(id) { return (I18N.getLang() === 'ar' ? 'أ' : 'P') + (prioRank(id) + 1); }
+  function prioColor(id) { return prio(id).color || '#6f7d94'; }
+  function applyPriorityStyles() {
+    let st = document.getElementById('prioStyles');
+    if (!st) { st = document.createElement('style'); st.id = 'prioStyles'; document.head.appendChild(st); }
+    st.textContent = prios().map(l => { const c = l.color || '#6f7d94'; const id = Number(l.id); return `.pill.p${id}{background:color-mix(in srgb, ${c} 15%, var(--surface));color:${c}}\n.email-item.p${id}::before,.kcard.p${id}::before{background:${c}}\n.seg button.active.p${id}{color:${c}}`; }).join('\n');
+  }
+  Object.assign(App, { prios, prio, prioRank, prioName, prioShort, prioColor, applyPriorityStyles });
+  // Emails whose level no longer exists get the nearest remaining level (manual) or are re-scored (automatic)
+  async function reassignPriorities(removedRank) {
+    const l = prios();
+    for (const e of S.emails) {
+      const exists = l.some(x => String(x.id) === String(e.priority));
+      if (e.priorityManual && !exists) { e.priority = l[Math.min(removedRank || 0, l.length - 1)].id; }
+      if (!e.priorityManual) { const sc = Engine.scoreEmail(e, S.settings); e.priority = sc.priority; e.priorityAuto = sc.priority; e.reasons = sc.reasons; e.score = sc.score; }
+      else if (!l.some(x => String(x.id) === String(e.priorityAuto))) { const sc = Engine.scoreEmail(e, S.settings); e.priorityAuto = sc.priority; }
+      await DB.putEmail(e);
+    }
+  }
+  App.reassignPriorities = reassignPriorities;
   function saveSettings() { localStorage.setItem('em.settings', JSON.stringify(S.settings)); }
   App.saveSettings = saveSettings;
 
@@ -340,7 +370,7 @@
         case 'all': return e.status !== 'replied' && !isSnoozed(e);
         case 'today': return isOpen(e) && !isSnoozed(e) && e.dueAt && new Date(e.dueAt) <= todayEnd;
         case 'overdue': return isOpen(e) && !isSnoozed(e) && e.dueAt && new Date(e.dueAt) < now;
-        case 'p1': return isOpen(e) && e.priority === 1 && !isSnoozed(e);
+        case 'top': return isOpen(e) && String(e.priority) === String(prios()[0].id) && !isSnoozed(e);
         case 'vip': return e.status !== 'replied' && isVip(e);
         case 'snoozed': return isSnoozed(e);
         case 'awaiting': return e.status === 'awaiting';
@@ -348,10 +378,10 @@
         default: return true;
       }
     });
-    if (q) list = list.filter(e => [e.subject, e.from.name, e.from.address, e.snippet, (e.textBody || '').slice(0, 5000), (e.tags || []).join(' '), e.notes || ''].join('\n').toLowerCase().includes(q));
+    if (q) list = list.filter(e => [e.subject, e.from.name, e.from.address, e.snippet, (e.textBody || '').slice(0, 5000), (e.tags || []).join(' '), e.notes || '', (e.noteItems || []).map(n => n.text || n.name || '').join(' ')].join('\n').toLowerCase().includes(q));
     const cmp = {
-      priority: (a, b) => a.priority - b.priority || dueCmp(a, b) || dateCmp(a, b),
-      due: (a, b) => dueCmp(a, b) || a.priority - b.priority,
+      priority: (a, b) => prioRank(a.priority) - prioRank(b.priority) || dueCmp(a, b) || dateCmp(a, b),
+      due: (a, b) => dueCmp(a, b) || prioRank(a.priority) - prioRank(b.priority),
       date: dateCmp,
       sender: (a, b) => (a.from.name || a.from.address || '').localeCompare(b.from.name || b.from.address || '') || dateCmp(a, b)
     }[S.sort] || ((a, b) => 0);
@@ -390,14 +420,14 @@
       all: S.emails.filter(e => e.status !== 'replied' && !isSnoozed(e)).length,
       today: open.filter(e => e.dueAt && new Date(e.dueAt) <= todayEnd).length,
       overdue: open.filter(e => e.dueAt && new Date(e.dueAt) < now).length,
-      p1: open.filter(e => e.priority === 1).length,
+      top: open.filter(e => String(e.priority) === String(prios()[0].id)).length,
       vip: S.emails.filter(e => e.status !== 'replied' && isVip(e)).length,
       awaiting: S.emails.filter(e => e.status === 'awaiting').length,
       snoozed: S.emails.filter(isSnoozed).length,
       replied: S.emails.filter(e => e.status === 'replied').length
     };
-    const defs = [['all', 'filter_all'], ['today', 'filter_today'], ['overdue', 'filter_overdue'], ['p1', 'filter_p1'], ['vip', 'filter_vip'], ['awaiting', 'filter_awaiting'], ['snoozed', 'filter_snoozed'], ['replied', 'filter_replied']];
-    $('#filters').innerHTML = defs.map(([k, label]) => `<button class="chip clickable ${S.filter === k ? 'active' : ''}" data-filter="${k}">${t(label)}${counts[k] ? ` <span style="opacity:.7">${counts[k]}</span>` : ''}</button>`).join('');
+    const defs = [['all', 'filter_all'], ['today', 'filter_today'], ['overdue', 'filter_overdue'], ['top', null], ['vip', 'filter_vip'], ['awaiting', 'filter_awaiting'], ['snoozed', 'filter_snoozed'], ['replied', 'filter_replied']];
+    $('#filters').innerHTML = defs.map(([k, label]) => `<button class="chip clickable ${S.filter === k ? 'active' : ''}" data-filter="${k}">${label ? t(label) : esc(prioName(prios()[0].id))}${counts[k] ? ` <span style="opacity:.7">${counts[k]}</span>` : ''}</button>`).join('');
     const sel = $('#sortSelect');
     sel.innerHTML = [['priority', 'sort_priority'], ['due', 'sort_due'], ['date', 'sort_date'], ['sender', 'sort_sender']].map(([k, l]) => `<option value="${k}" ${S.sort === k ? 'selected' : ''}>${t(l)}</option>`).join('');
   }
@@ -419,6 +449,7 @@
       const st = e.status !== 'todo' ? `<span class="pill st-${e.status}">${t('status_' + e.status)}</span>` : '';
       const tags = (e.tags || []).slice(0, 3).map(tg => `<span class="pill tag">${esc(tg)}</span>`).join('');
       const att = e.attachments.filter(a => !a.inline).length;
+      const nc = App.noteCount ? App.noteCount(e) : 0;
       return `<div class="email-item p${e.priority} ${S.selectedId === e.id ? 'selected' : ''} ${S.checked.has(e.id) ? 'checked' : ''} ${e.status === 'replied' ? 'done' : ''}" data-id="${e.id}" tabindex="0">
         <input type="checkbox" class="check" ${S.checked.has(e.id) ? 'checked' : ''} aria-label="select">
         <div class="avatar" style="background:${avatarColor(e.from.address || name)}">${esc(initials(e.from.name, e.from.address))}</div>
@@ -426,7 +457,7 @@
           <div class="row1"><span class="sender" dir="auto">${esc(name)}</span>${isVip(e) ? `<span class="pill vip sm">${icon('star', 'sm')}</span>` : ''}<span class="when">${esc(fmtRelDay(e.date || e.addedAt))}</span></div>
           <div class="subject" dir="auto">${esc(e.subject || t('no_subject'))}</div>
           <div class="snippet" dir="auto">${esc(e.snippet || '')}</div>
-          <div class="row3"><span class="pill p${e.priority}">${t('priority_short_' + e.priority)} · ${t('priority_' + e.priority)}</span><span class="due ${di.cls}" data-due-for="${e.id}">${icon(di.icon, 'sm')}<span>${esc(di.text)}</span></span>${st}${att ? `<span class="att">${icon('clip', 'sm')}${att}</span>` : ''}${tags}</div>
+          <div class="row3"><span class="pill p${e.priority}">${prioShort(e.priority)} · ${esc(prioName(e.priority))}</span><span class="due ${di.cls}" data-due-for="${e.id}">${icon(di.icon, 'sm')}<span>${esc(di.text)}</span></span>${st}${att ? `<span class="att">${icon('clip', 'sm')}${att}</span>` : ''}${nc ? `<span class="att" title="${t('tab_notes')}">${icon('edit', 'sm')}${nc}</span>` : ''}${tags}</div>
         </div></div>`;
     }).join('');
     renderBulkBar();
@@ -527,7 +558,7 @@
         <div class="dates"><div>${t('detail_date')}: ${esc(fmtDateTime(e.date || e.addedAt))}</div><div>${t('detail_added')}: ${esc(fmtRelDay(e.addedAt))}</div></div>
       </div>
       <div class="detail-controls">
-        <div class="ctrl"><span class="ctrl-label">${t('priority')}</span><div class="seg" data-h="priority">${[1, 2, 3, 4].map(p => `<button class="${e.priority === p ? 'active p' + p : ''}" data-p="${p}" title="${t('priority_' + p)}"><span class="dot" style="color:var(--p${p})"></span>${t('priority_short_' + p)}</button>`).join('')}</div>${e.priorityManual ? `<button class="btn xs btn-ghost" data-h="resetp" title="${t('reset_priority')}">${icon('refresh', 'sm')}${t('auto')}</button>` : ''}</div>
+        <div class="ctrl"><span class="ctrl-label">${t('priority')}</span><div class="seg" data-h="priority">${prios().map(l => `<button class="${String(e.priority) === String(l.id) ? 'active p' + l.id : ''}" data-p="${l.id}" title="${esc(prioName(l.id))}"><span class="dot" style="color:${esc(l.color)}"></span>${prioShort(l.id)}</button>`).join('')}</div><span class="inline-note">${esc(prioName(e.priority))}</span>${e.priorityManual ? `<button class="btn xs btn-ghost" data-h="resetp" title="${t('reset_priority')}">${icon('refresh', 'sm')}${t('auto')}</button>` : ''}</div>
         <div class="ctrl"><span class="ctrl-label">${t('status')}</span><button class="pill st-${e.status}" style="height:28px;padding:0 10px;cursor:pointer;border:0;font-size:12px" data-h="status">${t('status_' + e.status)} ${icon('chevron', 'sm')}</button></div>
         <div class="ctrl"><span class="ctrl-label">${t('deadline')}</span><button class="due lg ${di.cls}" data-h="due" data-due-for="${e.id}">${icon(di.icon, 'sm')}<span>${esc(di.text)}</span></button>${e.dueAt && e.status !== 'replied' ? `<span class="inline-note">${esc(fmtDateTime(e.dueAt))}</span>` : ''}</div>
         <div class="ctrl" style="flex:1;min-width:200px"><span class="ctrl-label">${t('tags')}</span><div class="tags-edit" data-h="tags">${(e.tags || []).map(tg => `<span class="pill tag">${esc(tg)}<span class="x" data-tag="${esc(tg)}">${icon('x', 'sm')}</span></span>`).join('')}<input placeholder="${t('add_tag')}" data-h="tagInput"></div></div>
@@ -544,7 +575,7 @@
   function renderTabs() {
     const e = App.getEmail(S.selectedId); const el = $('#detailTabs'); if (!e || !el) return;
     el.innerHTML = [['message', 'tab_message', 'mail'], ['reply', 'tab_reply', 'reply'], ['notes', 'tab_notes', 'edit']].map(([k, l, ic]) =>
-      `<button class="${S.tab === k ? 'active' : ''}" data-tab="${k}">${icon(ic)}${t(l)}${k === 'reply' && e.draft && e.draft.body ? `<span class="badge">${t('draft_badge')}</span>` : ''}</button>`).join('');
+      `<button class="${S.tab === k ? 'active' : ''}" data-tab="${k}">${icon(ic)}${t(l)}${k === 'reply' && e.draft && e.draft.body ? `<span class="badge">${t('draft_badge')}</span>` : ''}${k === 'notes' && App.noteCount && App.noteCount(e) ? `<span class="badge info">${App.noteCount(e)}</span>` : ''}</button>`).join('');
   }
   App.renderTabs = renderTabs;
 
@@ -552,7 +583,7 @@
     const e = App.getEmail(S.selectedId); const el = $('#tabContent'); if (!e || !el) return;
     if (S.tab === 'message') renderMessageTab(e, el);
     else if (S.tab === 'reply') App.renderReplyTab(e, el);
-    else renderNotesTab(e, el);
+    else App.renderNotesTab(e, el);
   }
   App.renderTabContent = renderTabContent;
 
@@ -643,12 +674,6 @@
     return { srcdoc, hasRemote };
   }
   App.buildSrcdoc = buildSrcdoc;
-
-  function renderNotesTab(e, el) {
-    el.innerHTML = `<div class="card"><div class="card-head"><h3>${icon('edit')}${t('tab_notes')}</h3></div><div class="card-body"><textarea class="textarea" id="notesArea" placeholder="${t('notes_placeholder')}" dir="auto">${esc(e.notes || '')}</textarea></div></div>`;
-    const ta = $('#notesArea');
-    ta.addEventListener('input', debounce(() => { e.notes = ta.value; saveEmail(e); }, 600));
-  }
 
   /* ---------- attachments actions ---------- */
   function downloadBlob(blob, name) {
@@ -852,7 +877,7 @@
       const ids = Array.from(S.checked); const emails = ids.map(App.getEmail).filter(Boolean);
       if (b.dataset.bulk === 'clear') { S.checked.clear(); renderList(); }
       else if (b.dataset.bulk === 'delete') { if (await confirmDialog(t('delete_many_confirm', { n: ids.length }), { danger: true, okLabel: t('delete') })) { for (const e of emails) { S.emails.splice(S.emails.indexOf(e), 1); await DB.deleteEmail(e.id); } S.checked.clear(); if (ids.includes(S.selectedId)) S.selectedId = null; renderAll(); } }
-      else if (b.dataset.bulk === 'priority') { const el = popover(b, [1, 2, 3, 4].map(p => `<button class="item" data-p="${p}"><span class="dot" style="width:10px;height:10px;border-radius:50%;background:var(--p${p})"></span>${t('priority_' + p)}</button>`).join('')); el.querySelectorAll('[data-p]').forEach(x => x.onclick = async () => { for (const e of emails) { e.priority = +x.dataset.p; e.priorityManual = e.priority !== e.priorityAuto; await DB.putEmail(e); } closePopover(); renderAll(); }); }
+      else if (b.dataset.bulk === 'priority') { const el = popover(b, prios().map(l => `<button class="item" data-p="${l.id}"><span class="dot" style="width:10px;height:10px;border-radius:50%;background:${esc(l.color)}"></span>${prioShort(l.id)} · ${esc(prioName(l.id))}</button>`).join('')); el.querySelectorAll('[data-p]').forEach(x => x.onclick = async () => { for (const e of emails) { e.priority = +x.dataset.p; e.priorityManual = e.priority !== e.priorityAuto; await DB.putEmail(e); } closePopover(); renderAll(); }); }
       else if (b.dataset.bulk === 'status') { const el = popover(b, ['todo', 'drafting', 'replied', 'awaiting'].map(s => `<button class="item" data-st="${s}"><span class="dot" style="width:10px;height:10px;border-radius:50%;background:var(--s-${s})"></span>${t('status_' + s)}</button>`).join('')); el.querySelectorAll('[data-st]').forEach(x => x.onclick = async () => { for (const e of emails) { await setStatus(e, x.dataset.st); } closePopover(); renderAll(); }); }
     });
     // detail pane delegation
@@ -899,7 +924,7 @@
         const n = list[Math.max(0, Math.min(list.length - 1, i + dir))]; if (n) { select(n.id); const it = $(`.email-item[data-id="${n.id}"]`); if (it) it.scrollIntoView({ block: 'nearest' }); }
       }
       else if (e && ev.key === 'r') { S.tab = 'reply'; renderTabs(); renderTabContent(); }
-      else if (e && /^[1-4]$/.test(ev.key)) setPriority(e, +ev.key, true);
+      else if (e && /^[1-9]$/.test(ev.key) && prios()[+ev.key - 1]) setPriority(e, prios()[+ev.key - 1].id, true);
       else if (e && ev.key === 'e') setStatus(e, e.status === 'replied' ? 'todo' : 'replied');
       else if (e && ev.key === 'Delete') { confirmDialog(t('delete_confirm'), { danger: true, okLabel: t('delete') }).then(ok => ok && deleteEmail(e)); }
       else if (ev.key === 'Escape') { closePopover(); }
@@ -908,7 +933,13 @@
     let dragDepth = 0;
     const overlay = $('#dropOverlay');
     const hasFiles = (ev) => ev.dataTransfer && Array.from(ev.dataTransfer.types || []).some(x => x === 'Files' || x === 'text/plain');
-    document.addEventListener('dragenter', (ev) => { if (!hasFiles(ev)) return; ev.preventDefault(); dragDepth++; overlay.classList.add('show'); });
+    document.addEventListener('dragenter', (ev) => {
+      if (!hasFiles(ev)) return; ev.preventDefault(); dragDepth++;
+      const notesMode = !!(S.selectedId && S.view === 'inbox' && S.tab === 'notes' && $('#notesCard'));
+      overlay.querySelector('h2').textContent = notesMode ? t('drop_notes_title') : t('drop_title');
+      overlay.querySelector('p').textContent = notesMode ? t('drop_notes_sub') : t('drop_sub');
+      overlay.classList.add('show');
+    });
     document.addEventListener('dragover', (ev) => { if (!hasFiles(ev)) return; ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
     document.addEventListener('dragleave', (ev) => { if (!hasFiles(ev)) return; dragDepth = Math.max(0, dragDepth - 1); if (dragDepth === 0) overlay.classList.remove('show'); });
     document.addEventListener('drop', async (ev) => {
@@ -921,6 +952,9 @@
         for (const it of Array.from(ev.dataTransfer.items)) { if (it.kind === 'file') { const f = it.getAsFile(); if (f) files.push(f); } }
       }
       if (!files.length && ev.dataTransfer.files && ev.dataTransfer.files.length) files.push(...Array.from(ev.dataTransfer.files));
+      const cur = App.getEmail(S.selectedId);
+      const notesZone = cur && S.view === 'inbox' && S.tab === 'notes' && $('#notesCard');
+      if (notesZone && cur) { if (files.length) return App.addNoteFiles(cur, files); const txt = ev.dataTransfer.getData('text/plain'); if (txt && txt.trim()) { cur.noteItems = cur.noteItems || []; cur.noteItems.push({ id: uid(), kind: 'text', text: txt.trim(), createdAt: new Date().toISOString() }); await saveEmail(cur); App.renderTabContent(); } return; }
       if (files.length) return importFiles(files);
       const text = ev.dataTransfer.getData('text/plain');
       if (text && text.trim().length > 20) importPasted(text);
@@ -933,9 +967,9 @@
   async function init() {
     loadSettings();
     S.sort = S.settings.sort || 'priority';
-    applyLang(); applyTheme();
+    applyLang(); applyTheme(); applyPriorityStyles();
     try { S.emails = await DB.getAllEmails(); } catch (err) { console.error(err); S.emails = []; }
-    S.emails.forEach(e => { e.tags = e.tags || []; e.attachments = e.attachments || []; e.notified = e.notified || {}; });
+    S.emails.forEach(e => { e.tags = e.tags || []; e.attachments = e.attachments || []; e.notified = e.notified || {}; e.noteItems = e.noteItems || []; });
     bindEvents();
     renderAll();
     setInterval(checkDeadlines, 30000);

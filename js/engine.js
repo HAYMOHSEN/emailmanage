@@ -220,15 +220,29 @@
     // attachments requiring action
     if ((email.attachments || []).some(a => /\.(docx?|xlsx?|pdf)$/i.test(a.name)) && rq.n) { score += 0.5; }
 
-    let priority;
-    if (score >= 8) priority = 1; else if (score >= 4.5) priority = 2; else if (score >= 1.5) priority = 3; else priority = 4;
+    const levels = priorityLevels(settings);
+    let priority = levels[levels.length - 1].id;
+    for (let i = 0; i < levels.length; i++) { const min = levels[i].minScore; if (i === levels.length - 1 || (min !== null && min !== undefined && score >= min)) { priority = levels[i].id; break; } }
     return { score: Math.round(score * 10) / 10, priority, reasons: Array.from(new Set(reasons)), dates };
   }
 
+  /* ---------- priority levels (user-configurable) ---------- */
+  const DEFAULT_PRIORITIES = [
+    { id: 1, name: { en: 'Critical', ar: 'حرجة' }, color: '#e03131', hours: 6, minScore: 8 },
+    { id: 2, name: { en: 'High', ar: 'عالية' }, color: '#f08c00', hours: 24, minScore: 4.5 },
+    { id: 3, name: { en: 'Normal', ar: 'عادية' }, color: '#2f5bea', hours: 72, minScore: 1.5 },
+    { id: 4, name: { en: 'Low', ar: 'منخفضة' }, color: '#6f7d94', hours: 168, minScore: null }
+  ];
+  function priorityLevels(settings) {
+    const list = settings && Array.isArray(settings.priorities) && settings.priorities.length >= 2 ? settings.priorities : DEFAULT_PRIORITIES;
+    return list;
+  }
+
   function suggestDue(priority, dates, settings) {
-    const hours = Object.assign({ 1: 6, 2: 24, 3: 72, 4: 168 }, settings && settings.dueHours || {});
+    const levels = priorityLevels(settings);
+    const lvl = levels.find(l => String(l.id) === String(priority)) || levels[levels.length - 1];
     const now = new Date();
-    let due = new Date(now.getTime() + (hours[priority] || 72) * 3600e3);
+    let due = new Date(now.getTime() + (Number(lvl.hours) > 0 ? Number(lvl.hours) : 72) * 3600e3);
     // avoid landing in the middle of the night: push to 09:00 if between 21:00 and 07:00
     if (due.getHours() >= 21) { due = atHour(addDays(due, 1), 9); }
     else if (due.getHours() < 7) { due = atHour(due, 9); }
@@ -586,5 +600,5 @@
     return aiComplete(cfg, system, user, 1500);
   }
 
-  global.Engine = { detectLang, firstName, nameFor, scoreEmail, suggestDue, extractDates, extractPoints, detectIntent, smartReplies, TEMPLATES, fillTemplate, AI_DEFAULTS, aiReplies, aiRefine, aiComplete, normalizeDigits, fmtDate };
+  global.Engine = { detectLang, firstName, nameFor, scoreEmail, suggestDue, DEFAULT_PRIORITIES, priorityLevels, extractDates, extractPoints, detectIntent, smartReplies, TEMPLATES, fillTemplate, AI_DEFAULTS, aiReplies, aiRefine, aiComplete, normalizeDigits, fmtDate };
 })(window);
