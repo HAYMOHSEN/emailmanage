@@ -1,0 +1,81 @@
+{
+  "name": "Email Management — إدارة الرسائل البريدية",
+  "short_name": "Email Management",
+  "description": "Prioritize your emails, set reply deadlines with live countdowns, and draft replies with smart suggestions — all on your device.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "orientation": "any",
+  "background_color": "#eef1f7",
+  "theme_color": "#2f5bea",
+  "lang": "en",
+  "dir": "auto",
+  "categories": [
+    "productivity",
+    "business",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "accept": {
+        "message/rfc822": [
+          ".eml"
+        ],
+        "application/vnd.ms-outlook": [
+          ".msg"
+        ]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "shortcuts": [
+    {
+      "name": "Inbox",
+      "url": "./index.html#inbox",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Board",
+      "url": "./index.html#board",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
