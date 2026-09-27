@@ -440,3 +440,65 @@ html[dir="rtl"] .toast-root { transform: translateX(50%); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: padding-box; border: 2px solid transparent; }
+
+/* ---------- attachment editor ---------- */
+.att-chip { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.att-hint { flex-basis: 100%; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); padding-top: 2px; }
+.att-chip:hover { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(47,91,234,.10); }
+.att-chip.edited { border-style: dashed; }
+.edited-badge { color: var(--success); font-weight: 700; }
+.editor { position: fixed; inset: 0; z-index: 250; background: var(--bg-2); display: flex; flex-direction: column; }
+.ed-bar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.ed-title { min-width: 0; max-width: 300px; }
+.ed-name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-meta { font-size: 11.5px; color: var(--muted); }
+.ed-tools { display: flex; gap: 3px; background: var(--surface-3); padding: 4px; border-radius: 11px; align-items: center; }
+.ed-tools button { width: 38px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); display: grid; place-items: center; transition: background .12s, color .12s; }
+.ed-tools button:hover { color: var(--text); background: var(--surface-2); }
+.ed-tools button.active { background: var(--surface); color: var(--primary-text); box-shadow: var(--shadow-sm); }
+.ed-vsep { width: 1px; height: 22px; background: var(--border-2); margin: 0 4px; }
+.ed-actions { margin-inline-start: auto; display: flex; gap: 8px; }
+.ed-sub { display: flex; align-items: center; gap: 16px; padding: 6px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 12px; flex-wrap: wrap; }
+.ed-sub .spacer { flex: 1; }
+.ed-colors { display: flex; gap: 6px; }
+.ed-colors button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-2); padding: 0; cursor: pointer; }
+.ed-colors button.active { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary); }
+.ed-range { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-2); }
+.ed-range input { width: 90px; accent-color: var(--primary); }
+.ed-pagenav { font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.ed-zoom { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 150px; justify-content: flex-end; }
+.ed-body { flex: 1; overflow: auto; padding: 22px 16px 60px; }
+.ed-pages { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.ed-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 40px; }
+.epage { position: relative; background: #fff; box-shadow: var(--shadow); touch-action: none; user-select: none; -webkit-user-select: none; }
+.epage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.epage .eoverlay { cursor: crosshair; }
+.editor.tool-select .eoverlay { cursor: default; }
+.editor.tool-text .eoverlay { cursor: text; }
+.editor.tool-eraser .eoverlay { cursor: not-allowed; }
+.epage .etexts { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.etext { position: absolute; pointer-events: none; white-space: pre; line-height: 1.35; min-width: 14px; min-height: 1em; outline: 1.5px dashed transparent; outline-offset: 0; border-radius: 3px; font-family: "Inter","IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif; user-select: text; -webkit-user-select: text; }
+.editor.tool-select .etext, .editor.tool-text .etext, .editor.tool-eraser .etext { pointer-events: auto; cursor: move; }
+.editor.tool-eraser .etext { cursor: not-allowed; }
+.etext:focus { outline-color: var(--primary); background: rgba(47,91,234,.07); cursor: text; }
+.etext.selected { outline-color: var(--primary); }
+.etext:empty::before { content: attr(data-ph); color: rgba(120,120,120,.6); }
+.ed-hint { position: fixed; bottom: 14px; inset-inline-start: 50%; transform: translateX(-50%); background: var(--text); color: var(--surface); padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; pointer-events: none; max-width: 90vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[dir="rtl"] .ed-hint { transform: translateX(50%); }
+.ed-hint:empty { display: none; }
+.ed-textarea { width: min(900px, 100%); min-height: calc(100vh - 160px); font-family: ui-monospace, "Cascadia Mono", Consolas, "Segoe UI", monospace; font-size: 13.5px; line-height: 1.6; }
+.ed-other { max-width: 560px; margin: 40px auto; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 30px 26px; box-shadow: var(--shadow); }
+.ed-other-ico { width: 70px; height: 70px; border-radius: 18px; background: var(--grad); color: #fff; display: grid; place-items: center; margin: 0 auto 14px; font-weight: 800; text-transform: uppercase; font-size: 15px; }
+.ed-other h3 { margin: 0 0 4px; overflow-wrap: anywhere; }
+.ed-other p { color: var(--text-2); font-size: 13px; }
+.ed-other-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+.files-list { display: flex; flex-direction: column; gap: 6px; }
+.file-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; background: var(--surface-2); font-size: 13px; }
+.file-row input { accent-color: var(--primary); }
+.file-row .nm { font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-row .sz { color: var(--muted); font-size: 12px; }
+@media (max-width: 900px) {
+  .ed-title { max-width: 160px; }
+  .ed-actions .btn span { display: none; }
+  .ed-body { padding: 12px 8px 60px; }
+}

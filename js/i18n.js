@@ -83,6 +83,12 @@
       default_signature_hint: 'Leave empty to sign with your name only.',
       help_drag: 'How to import', more: 'More', less: 'Less',
       reset_priority: 'Reset to automatic',
+      edit_attachment: 'Open & edit', view_attachment: 'Open', open_new_tab: 'Open in new tab', save_to_folder: 'Save to computer…', upload_edited: 'Upload edited version…', edited_badge: 'edited', edited_suffix: 'edited', delete_version: 'Delete this version', delete_confirm_version: 'Delete this edited version?', file_missing: 'The file is no longer available.', saved_as: 'Saved as {f}', saved_to: 'Saved: {f}', save_failed: 'Could not save: {e}', download: 'Download', save_copy: 'Save edited copy', loading: 'Loading…', render_error: 'This file could not be displayed ({e}).', unsaved_changes: 'You have unsaved changes. Close without saving?', text_placeholder: 'Type…', page_of: 'Page {a} / {b}',
+      editor_select: 'Select / move (V)', editor_pen: 'Pen (P)', editor_highlighter: 'Highlighter (H)', editor_text: 'Text (T)', editor_rect: 'Rectangle (R)', editor_eraser: 'Eraser (E)', editor_undo: 'Undo', editor_redo: 'Redo', editor_size: 'Stroke', editor_text_size: 'Text size', editor_zoom_in: 'Zoom in', editor_zoom_out: 'Zoom out', editor_fit: 'Fit width',
+      editor_hint_select: 'Click an annotation to select it, drag to move, Delete to remove. Double-click text to edit it.', editor_hint_pen: 'Draw or sign with the mouse, pen or touch.', editor_hint_hl: 'Drag over text to highlight it.', editor_hint_text: 'Click where you want to add text (Arabic and English supported).', editor_hint_rect: 'Drag to draw a rectangle.', editor_hint_eraser: 'Click an annotation to delete it.',
+      other_type_hint: 'This file type is edited with its own program (e.g. Word or Excel): save it to your computer, edit it there, then upload the edited version here so it stays with this email.',
+      files_to_send: 'Files to send with your reply', files_hint: 'Mail apps cannot receive attachments from a link, so save the files first and then attach them in your mail app — or use Share to send them straight to a supported app.', save_selected: 'Save selected to folder…', download_selected: 'Download selected', share_files: 'Share…', no_files_selected: 'Select at least one file.', folder_saved: '{n} file(s) saved to {f}', original_badge: 'original',
+      attachments_hint: 'Click an attachment to open it — PDFs, images and text files can be edited and signed here.',
       draft_badge: 'Draft',
       manual_title: 'Add an email manually', manual_hint: 'Use this when the email cannot be dragged (e.g. from a phone screenshot).'
     },
@@ -165,6 +171,12 @@
       default_signature_hint: 'اتركه فارغاً للتوقيع باسمك فقط.',
       help_drag: 'طريقة الاستيراد', more: 'المزيد', less: 'أقل',
       reset_priority: 'إعادة إلى التلقائي',
+      edit_attachment: 'فتح وتعديل', view_attachment: 'فتح', open_new_tab: 'فتح في تبويب جديد', save_to_folder: 'حفظ على الجهاز…', upload_edited: 'رفع النسخة المعدّلة…', edited_badge: 'معدّل', edited_suffix: 'معدّل', delete_version: 'حذف هذه النسخة', delete_confirm_version: 'هل تريد حذف هذه النسخة المعدّلة؟', file_missing: 'الملف لم يعد متاحاً.', saved_as: 'تم الحفظ باسم {f}', saved_to: 'تم الحفظ: {f}', save_failed: 'تعذّر الحفظ: {e}', download: 'تنزيل', save_copy: 'حفظ نسخة معدّلة', loading: 'جارٍ التحميل…', render_error: 'تعذّر عرض هذا الملف ({e}).', unsaved_changes: 'لديك تعديلات غير محفوظة. هل تريد الإغلاق دون حفظ؟', text_placeholder: 'اكتب…', page_of: 'صفحة {a} / {b}',
+      editor_select: 'تحديد / تحريك (V)', editor_pen: 'قلم (P)', editor_highlighter: 'تظليل (H)', editor_text: 'نص (T)', editor_rect: 'مستطيل (R)', editor_eraser: 'ممحاة (E)', editor_undo: 'تراجع', editor_redo: 'إعادة', editor_size: 'سماكة الخط', editor_text_size: 'حجم النص', editor_zoom_in: 'تكبير', editor_zoom_out: 'تصغير', editor_fit: 'ملاءمة العرض',
+      editor_hint_select: 'انقر على أي تعليق لتحديده، واسحبه لتحريكه، واضغط Delete لحذفه. انقر مرتين على النص لتعديله.', editor_hint_pen: 'ارسم أو وقّع بالفأرة أو القلم أو اللمس.', editor_hint_hl: 'اسحب فوق النص لتظليله.', editor_hint_text: 'انقر حيث تريد إضافة نص (يدعم العربية والإنجليزية).', editor_hint_rect: 'اسحب لرسم مستطيل.', editor_hint_eraser: 'انقر على أي تعليق لحذفه.',
+      other_type_hint: 'هذا النوع من الملفات يُعدَّل ببرنامجه الخاص (مثل Word أو Excel): احفظه على جهازك، وعدّله هناك، ثم ارفع النسخة المعدّلة هنا لتبقى مع هذه الرسالة.',
+      files_to_send: 'ملفات لإرسالها مع ردك', files_hint: 'لا تستطيع تطبيقات البريد استلام المرفقات عبر رابط، لذا احفظ الملفات أولاً ثم أرفقها في تطبيق البريد — أو استخدم «مشاركة» لإرسالها مباشرة إلى تطبيق يدعم ذلك.', save_selected: 'حفظ المحدد في مجلد…', download_selected: 'تنزيل المحدد', share_files: 'مشاركة…', no_files_selected: 'اختر ملفاً واحداً على الأقل.', folder_saved: 'تم حفظ {n} ملف في {f}', original_badge: 'أصلي',
+      attachments_hint: 'انقر على المرفق لفتحه — يمكن تعديل ملفات PDF والصور والملفات النصية والتوقيع عليها هنا.',
       draft_badge: 'مسودة',
       manual_title: 'إضافة رسالة يدوياً', manual_hint: 'استخدم هذا عندما يتعذر سحب الرسالة (مثلاً من لقطة شاشة على الهاتف).'
     }

@@ -45,6 +45,7 @@
           <div id="aiOut" style="margin-top:12px"></div>
         </div></div>
 
+      ${filesCard(e)}
       <div class="card"><div class="card-head"><h3>${icon('reply')}${t('tab_reply')}</h3><span class="spacer"></span><span class="inline-note">${t('reply_suggest_hint')}</span></div>
         <div class="card-body composer">
           <div class="form-row">
@@ -110,6 +111,43 @@
     const aw = $('#cAwait', el); if (aw) aw.onclick = () => { saveDraft(e, el, false); App.setStatus(e, 'awaiting'); };
     const ro = $('#cReopen', el); if (ro) ro.onclick = () => App.setStatus(e, 'todo');
     const ra = $('#cReplyAll', el); if (ra) ra.onchange = () => { S.settings.replyAll = ra.checked; App.saveSettings(); };
+    $$('[data-files]', el).forEach(b => b.onclick = () => filesAction(e, el, b.dataset.files));
+  }
+
+  function sendableFiles(e) { return (e.attachments || []).filter(a => a.editedFrom || !a.inline); }
+  function filesCard(e) {
+    const files = sendableFiles(e);
+    if (!files.length) return '';
+    const canShare = !!(navigator.canShare && navigator.share);
+    return `<div class="card" style="margin-bottom:14px" id="filesCard"><div class="card-head"><div><h3>${icon('clip')}${t('files_to_send')}</h3><div class="sub">${t('files_hint')}</div></div></div>
+      <div class="card-body"><div class="files-list">${files.map(a => `<label class="file-row"><input type="checkbox" data-file="${a.id}" ${a.editedFrom ? 'checked' : ''}><span class="nm" dir="auto">${esc(a.name)}</span><span class="pill ${a.editedFrom ? 'st-replied' : 'tag'}">${a.editedFrom ? t('edited_badge') : t('original_badge')}</span><span class="sz">${App.fmtSize(a.size)}</span></label>`).join('')}</div>
+      <div class="composer-toolbar" style="margin-top:10px"><button class="btn sm btn-primary" data-files="folder">${icon('folder', 'sm')}${t('save_selected')}</button><button class="btn sm" data-files="download">${icon('download', 'sm')}${t('download_selected')}</button>${canShare ? `<button class="btn sm" data-files="share">${icon('share', 'sm')}${t('share_files')}</button>` : ''}</div></div></div>`;
+  }
+  async function selectedFiles(e, el) {
+    const ids = $$('[data-file]:checked', el).map(x => x.dataset.file);
+    const out = [];
+    for (const id of ids) { const a = e.attachments.find(x => x.id === id); const f = await DB.getFile(id); if (a && f) out.push({ a, blob: f.blob }); }
+    return out;
+  }
+  async function filesAction(e, el, act) {
+    const list = await selectedFiles(e, el);
+    if (!list.length) { toast(t('no_files_selected'), 'error'); return; }
+    if (act === 'download') { for (const { a, blob } of list) App.downloadBlob(blob, a.name); return; }
+    if (act === 'share') {
+      const fs = list.map(({ a, blob }) => new File([blob], a.name, { type: a.type || blob.type }));
+      try {
+        if (navigator.canShare && navigator.canShare({ files: fs })) { await navigator.share({ files: fs, title: replySubject(e), text: ($('#cBody', el) || {}).value || '' }); return; }
+        toast(t('folder_unsupported'), 'error');
+      } catch (err) { if (err && err.name !== 'AbortError') toast(t('save_failed', { e: err.message || err }), 'error'); }
+      return;
+    }
+    // folder
+    if (!window.showDirectoryPicker) { for (const { a, blob } of list) App.downloadBlob(blob, a.name); return; }
+    try {
+      const dir = await window.showDirectoryPicker({ mode: 'readwrite', id: 'em-send' });
+      for (const { a, blob } of list) { const fh = await dir.getFileHandle(a.name.replace(/[\\/:*?"<>|]/g, '_'), { create: true }); const w = await fh.createWritable(); await w.write(blob); await w.close(); }
+      toast(t('folder_saved', { n: list.length, f: dir.name }), 'success');
+    } catch (err) { if (err && err.name !== 'AbortError') toast(t('save_failed', { e: err.message || err }), 'error'); }
   }
 
   function allTemplates(lang) {

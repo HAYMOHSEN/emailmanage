@@ -60,6 +60,7 @@
     putFile: (f) => tx('files', 'readwrite', s => { s.put(f); return f.id; }),
     putFiles: (list) => tx('files', 'readwrite', s => { list.forEach(f => s.put(f)); return list.length; }),
     getFile: (id) => tx('files', 'readonly', s => wrap(s.get(id))),
+    deleteFile: (id) => tx('files', 'readwrite', s => { s.delete(id); return true; }),
     getFilesFor: (emailId) => tx('files', 'readonly', s => wrap(s.index('emailId').getAll(IDBKeyRange.only(emailId)))),
     getAllFiles: () => tx('files', 'readonly', s => wrap(s.getAll())),
     kvGet: (key) => tx('kv', 'readonly', s => wrap(s.get(key))).then(r => r ? r.value : undefined),

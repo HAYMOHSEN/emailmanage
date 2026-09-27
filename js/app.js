@@ -8,7 +8,7 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.1.0';
   const DEFAULT_SETTINGS = {
     lang: null, theme: 'system', myName: '', myRole: '', signature: '', officeHours: '', myAddresses: [],
     vipSenders: [], customKeywords: [], dueHours: { 1: 6, 2: 24, 3: 72, 4: 168 }, reminderMinutes: 60, followUpDays: 3,
@@ -556,18 +556,28 @@
   }
   App.renderTabContent = renderTabContent;
 
+  function attachmentChip(e, a) {
+    const ext = (a.name.split('.').pop() || '').toLowerCase();
+    const cls = /pdf/.test(ext) ? 'pdf' : /docx?|rtf|odt/.test(ext) ? 'doc' : /xlsx?|csv/.test(ext) ? 'xls' : /pptx?/.test(ext) ? 'ppt' : /png|jpe?g|gif|webp|bmp|svg/.test(ext) ? 'img' : /zip|rar|7z/.test(ext) ? 'zip' : /eml|msg/.test(ext) ? 'eml' : '';
+    const editable = App.Editor && App.Editor.kindOf(a) !== 'other';
+    return `<div class="att-chip ${a.editedFrom ? 'edited' : ''}" data-att="${a.id}" title="${esc(a.name)}">
+      <div class="ico ${cls}">${esc(ext.slice(0, 4) || 'file')}</div>
+      <div style="min-width:0"><div class="att-name" dir="auto">${esc(a.name)}</div><div class="att-size">${fmtSize(a.size)}${a.inline ? ' · inline' : ''}${a.editedFrom ? ` · <span class="edited-badge">${t('edited_badge')}</span>` : ''}</div></div>
+      <div class="att-actions">
+        <button class="icon-btn sm" data-attact="${editable ? 'edit' : 'view'}" title="${editable ? t('edit_attachment') : t('view_attachment')}">${icon(editable ? 'edit' : 'external', 'sm')}</button>
+        <button class="icon-btn sm" data-attact="save" title="${t('save_attachment')}">${icon('download', 'sm')}</button>
+        <button class="icon-btn sm" data-attact="more" title="${t('more')}">${icon('more', 'sm')}</button>
+      </div></div>`;
+  }
+  App.attachmentChip = attachmentChip;
+
   function linkify(text) {
     return esc(text).replace(/(https?:\/\/[^\s<]+[^\s<.,;:)!?"'])/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
   }
   async function renderMessageTab(e, el) {
     const allowRemote = S.allowRemote.has(e.id);
     const atts = e.attachments;
-    const attHtml = atts.length ? `<div class="attachments">${atts.map(a => {
-      const ext = (a.name.split('.').pop() || '').toLowerCase();
-      const cls = /pdf/.test(ext) ? 'pdf' : /docx?|rtf|odt/.test(ext) ? 'doc' : /xlsx?|csv/.test(ext) ? 'xls' : /pptx?/.test(ext) ? 'ppt' : /png|jpe?g|gif|webp|bmp|svg/.test(ext) ? 'img' : /zip|rar|7z/.test(ext) ? 'zip' : /eml|msg/.test(ext) ? 'eml' : '';
-      return `<div class="att-chip" data-att="${a.id}"><div class="ico ${cls}">${esc(ext.slice(0, 4) || 'file')}</div><div style="min-width:0"><div class="att-name" title="${esc(a.name)}">${esc(a.name)}</div><div class="att-size">${fmtSize(a.size)}${a.inline ? ' · inline' : ''}</div></div>
-        <div class="att-actions"><button class="icon-btn sm" data-attact="open" title="${t('open_attachment')}">${icon('external', 'sm')}</button><button class="icon-btn sm" data-attact="save" title="${t('save_attachment')}">${icon('download', 'sm')}</button>${/eml|msg/.test(ext) ? `<button class="icon-btn sm" data-attact="import" title="${t('btn_import')}">${icon('upload', 'sm')}</button>` : ''}</div></div>`;
-    }).join('')}</div>` : '';
+    const attHtml = atts.length ? `<div class="attachments">${atts.map(a => App.attachmentChip(e, a)).join('')}<div class="att-hint">${icon('info', 'sm')}${t('attachments_hint')}</div></div>` : '';
     el.innerHTML = `<div class="card paper-wrap"><div id="remoteBar"></div><div class="paper" id="paper"></div>${attHtml}</div>`;
     const paper = $('#paper');
     if (e.htmlBody) {
@@ -641,22 +651,88 @@
   }
 
   /* ---------- attachments actions ---------- */
-  async function attachmentAction(e, attId, act) {
+  function downloadBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  async function saveBlobAs(blob, name) {
+    if (window.showSaveFilePicker) {
+      try {
+        const ext = '.' + (name.split('.').pop() || 'bin').toLowerCase();
+        const fh = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: ext.slice(1).toUpperCase(), accept: { [blob.type || 'application/octet-stream']: [ext] } }] });
+        const w = await fh.createWritable(); await w.write(blob); await w.close();
+        toast(t('saved_to', { f: fh.name }), 'success'); return true;
+      } catch (err) { if (err && err.name === 'AbortError') return false; /* fall back to download */ }
+    }
+    downloadBlob(blob, name); return true;
+  }
+  App.downloadBlob = downloadBlob; App.saveBlobAs = saveBlobAs;
+
+  async function attachmentAction(e, attId, act, anchor) {
     const a = e.attachments.find(x => x.id === attId); if (!a) return;
-    const f = await DB.getFile(a.id); if (!f) return;
+    const ext = (a.name.split('.').pop() || '').toLowerCase();
+    if (act === 'more') {
+      const el = popover(anchor, `
+        <button class="item" data-a="newtab">${icon('external', 'sm')}${t('open_new_tab')}</button>
+        <button class="item" data-a="saveas">${icon('folder', 'sm')}${t('save_to_folder')}</button>
+        <button class="item" data-a="upload">${icon('upload', 'sm')}${t('upload_edited')}</button>
+        ${/^(eml|msg)$/.test(ext) ? `<button class="item" data-a="import">${icon('inbox', 'sm')}${t('btn_import')}</button>` : ''}
+        ${a.editedFrom ? `<div class="sep"></div><button class="item danger" data-a="delete">${icon('trash', 'sm')}${t('delete_version')}</button>` : ''}`);
+      el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { closePopover(); attachmentAction(e, attId, b.dataset.a, anchor); });
+      return;
+    }
+    if (act === 'upload') {
+      const inp = document.createElement('input'); inp.type = 'file';
+      inp.onchange = async () => { const f = inp.files[0]; if (f) await App.addAttachmentVersion(e, a, f, f.name, f.type); };
+      inp.click(); return;
+    }
+    if (act === 'delete') {
+      if (!(await confirmDialog(t('delete_confirm_version'), { danger: true, okLabel: t('delete') }))) return;
+      e.attachments = e.attachments.filter(x => x.id !== a.id);
+      await DB.deleteFile(a.id); await saveEmail(e); renderTabContent(); renderDetailHead(); renderList(); return;
+    }
+    const f = await DB.getFile(a.id); if (!f) { toast(t('file_missing'), 'error'); return; }
     if (act === 'import') {
-      const ext = (a.name.split('.').pop() || '').toLowerCase();
       const file = new File([f.blob], a.name, { type: ext === 'msg' ? 'application/vnd.ms-outlook' : 'message/rfc822' });
       return importFiles([file]);
     }
-    const url = URL.createObjectURL(f.blob); S.blobUrls.push(url);
-    if (act === 'open') {
-      const w = window.open(url, '_blank');
-      if (!w) { const link = document.createElement('a'); link.href = url; link.target = '_blank'; link.click(); }
-    } else {
-      const link = document.createElement('a'); link.href = url; link.download = a.name; document.body.appendChild(link); link.click(); link.remove();
+    if (act === 'edit' || act === 'view') { if (App.Editor) return App.Editor.open(e, a); act = 'newtab'; }
+    if (act === 'newtab') {
+      const url = URL.createObjectURL(f.blob); S.blobUrls.push(url);
+      const w = window.open(url, '_blank', 'noopener');
+      if (!w) { const link = document.createElement('a'); link.href = url; link.target = '_blank'; link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove(); }
+      return;
     }
+    if (act === 'saveas') return saveBlobAs(f.blob, a.name);
+    downloadBlob(f.blob, a.name);
   }
+  App.attachmentAction = attachmentAction;
+
+  // Store an edited/uploaded version of an attachment next to the original
+  async function addAttachmentVersion(e, base, blob, name, type, extra) {
+    const id = uid();
+    const rec = Object.assign({ id, name, type: type || blob.type || 'application/octet-stream', size: blob.size, cid: '', inline: false, editedFrom: base.editedFrom || base.id, version: 1 }, extra || {});
+    const siblings = e.attachments.filter(x => x.editedFrom === rec.editedFrom);
+    rec.version = siblings.length + 1;
+    await DB.putFile({ id, emailId: e.id, name, type: rec.type, blob });
+    const idx = e.attachments.findIndex(x => x.id === base.id);
+    e.attachments.splice(idx + 1 + siblings.length, 0, rec);
+    await saveEmail(e);
+    if (S.selectedId === e.id) { renderTabContent(); renderDetailHead(); }
+    renderList();
+    toast(t('saved_as', { f: name }), 'success');
+    return rec;
+  }
+  async function updateAttachmentVersion(e, rec, blob, extra) {
+    rec.size = blob.size; Object.assign(rec, extra || {});
+    await DB.putFile({ id: rec.id, emailId: e.id, name: rec.name, type: rec.type, blob });
+    await saveEmail(e);
+    if (S.selectedId === e.id) renderTabContent();
+    toast(t('saved_as', { f: rec.name }), 'success');
+    return rec;
+  }
+  App.addAttachmentVersion = addAttachmentVersion; App.updateAttachmentVersion = updateAttachmentVersion;
 
   /* ---------- deadline popover ---------- */
   function dueQuickOptions() {
@@ -787,6 +863,10 @@
       if (!e) return;
       const tab = ev.target.closest('[data-tab]'); if (tab) { S.tab = tab.dataset.tab; renderTabs(); renderTabContent(); const sc = $('#detailScroll'), tb = $('#detailTabs'); if (sc && tb) sc.scrollTo({ top: tb.offsetTop - 4, behavior: 'smooth' }); return; }
       if (ev.target.closest('#btnBack')) { S.selectedId = null; $('#inboxLayout').classList.remove('show-detail'); renderList(); renderDetail(); return; }
+      const attBtn = ev.target.closest('[data-attact]');
+      if (attBtn) { const chip = attBtn.closest('[data-att]'); attachmentAction(e, chip.dataset.att, attBtn.dataset.attact, attBtn); return; }
+      const chipClick = ev.target.closest('.att-chip');
+      if (chipClick) { attachmentAction(e, chipClick.dataset.att, 'edit', chipClick); return; }
       const h = ev.target.closest('[data-h]'); if (!h) return;
       const k = h.dataset.h;
       if (k === 'priority') { const b = ev.target.closest('[data-p]'); if (b) setPriority(e, +b.dataset.p, true); }
@@ -798,8 +878,6 @@
       else if (k === 'delete') { if (await confirmDialog(t('delete_confirm'), { danger: true, okLabel: t('delete') })) deleteEmail(e); }
       else if (k === 'tags') { const x = ev.target.closest('[data-tag]'); if (x) { e.tags = e.tags.filter(tg => tg !== x.dataset.tag); await saveEmail(e); renderDetailHead(); renderList(); } }
       else if (k === 'loadimages') { S.allowRemote.add(e.id); renderTabContent(); }
-      const attBtn = ev.target.closest('[data-attact]');
-      if (attBtn) { const chip = attBtn.closest('[data-att]'); attachmentAction(e, chip.dataset.att, attBtn.dataset.attact); }
     });
     $('#detailPane').addEventListener('keydown', async (ev) => {
       if (ev.target.matches('[data-h="tagInput"]') && ev.key === 'Enter') {
@@ -809,6 +887,7 @@
     });
     // keyboard shortcuts
     document.addEventListener('keydown', (ev) => {
+      if (App.Editor && App.Editor.state.open) return; // the attachment editor handles its own keys
       if (ev.target.matches('input, textarea, select, [contenteditable]')) { if (ev.key === 'Escape') ev.target.blur(); return; }
       if ($('#modalRoot').classList.contains('show')) return;
       const e = App.getEmail(S.selectedId);

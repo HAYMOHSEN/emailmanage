@@ -33,6 +33,8 @@ A privacy-first web app (PWA) for the Microsoft Store: drag emails in, get them 
 - **ردود ذكية محلية**: يتعرّف التطبيق على نوع الرسالة (اجتماع، طلب مستند، استفسار، مهمة بموعد، شكر، دعوة، مشكلة، استفسار طالب، متابعة) ويقترح 3 ردود بأسلوب رسمي/ودّي/مختصر بالعربية أو الإنجليزية، بالإضافة إلى قائمة «نقاط يجب الرد عليها».
 - **ردود بالذكاء الاصطناعي** (اختياري): مفتاح API خاص بك (Anthropic Claude / OpenAI / Google Gemini / أي خدمة متوافقة مع OpenAI)، لتوليد 3 ردود وتحسين المسودة (اختصار، أكثر رسمية، تصحيح لغوي، ترجمة، إكمال الإجابات).
 - قوالب جاهزة وقوالب خاصة بك، فتح الرد في تطبيق البريد بنقرة (mailto)، نسخ، حفظ مسودة، تعليم كـ«تم الرد» أو «بانتظار ردهم» مع تذكير بالمتابعة.
+- **محرر المرفقات داخل التطبيق**: افتح أي مرفق بنقرة؛ ملفات PDF والصور تُعدَّل مباشرة (قلم للتوقيع، تظليل، نص عربي/إنجليزي، مستطيلات، تحديد وتحريك، ممحاة، تراجع/إعادة) ثم «حفظ نسخة معدّلة» تُحفظ مع الرسالة وتبقى قابلة للتعديل لاحقاً؛ الملفات النصية تُعدَّل في محرر نصي؛ أما ملفات Word/Excel وغيرها فتُحفظ على الجهاز لتعديلها ببرنامجها ثم تُرفع النسخة المعدّلة لتبقى مع الرسالة.
+- لوحة «ملفات لإرسالها مع ردك» في تبويب الرد: حفظ الملفات المحددة في مجلد، تنزيلها، أو مشاركتها مباشرة مع تطبيق يدعم المشاركة (Windows Share).
 - لوحة Kanban بالسحب والإفلات، إحصائيات، وسوم، بحث، تأجيل (Snooze)، مرسلون مهمون (VIP)، اختصارات لوحة المفاتيح.
 - عربي/إنجليزي بالكامل (RTL)، مظهر فاتح/داكن، يعمل دون اتصال، وكل البيانات على جهاز المستخدم فقط.
 - نسخ احتياطي إلى مجلد يختاره المستخدم (تلقائي أو يدوي) + تصدير/استيراد JSON.
@@ -49,8 +51,10 @@ js/msg.js         Outlook .msg parser (OLE/CFB, compressed RTF, RTF→HTML)
 js/engine.js      priority scoring, date extraction, smart replies, AI providers
 js/samples.js     demo emails
 js/app.js         core UI (inbox, detail, popovers, notifications, import)
-js/reply.js       reply tab (points, smart/AI replies, composer)
+js/editor.js      attachment viewer/editor (pdf.js + pdf-lib, annotations, versions)
+js/reply.js       reply tab (points, smart/AI replies, composer, files to send)
 js/extras.js      board, statistics, settings, backup
+lib/              pdf.js (Apache-2.0) and pdf-lib (MIT) — bundled for offline use
 manifest.json     PWA manifest (file handler for .eml/.msg)
 sw.js             service worker (offline)
 icons/            app icons
