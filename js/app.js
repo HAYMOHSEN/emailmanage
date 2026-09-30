@@ -8,7 +8,8 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '2.0.0';
+  const SUPPORT_EMAIL = 'haymohsen@gmail.com';
   const DEFAULT_SETTINGS = {
     lang: null, theme: 'system', myName: '', myRole: '', signature: '', officeHours: '', myAddresses: [],
     vipSenders: [], customKeywords: [], dueHours: { 1: 6, 2: 24, 3: 72, 4: 168 }, reminderMinutes: 60, followUpDays: 3,
@@ -21,7 +22,7 @@
       emails: [], settings: null, view: 'inbox', filter: 'all', sort: 'priority', search: '', selectedId: null, checked: new Set(),
       tab: 'message', allowRemote: new Set(), blobUrls: [], filesCache: new Map(), lastDeleted: null
     },
-    $, $$, t, APP_VERSION
+    $, $$, t, APP_VERSION, SUPPORT_EMAIL
   };
   const S = App.state;
 
@@ -252,6 +253,8 @@
     if (files.length) await DB.putFiles(files);
     await DB.putEmail(email);
     S.emails.push(email);
+    if (App.scheduleAutoBackup) App.scheduleAutoBackup();
+    if (App.Sync) App.Sync.nudgeAfterImport();
     return { email };
   }
   App.addParsedEmail = addParsedEmail;
@@ -339,10 +342,11 @@
     S.emails.splice(idx, 1);
     const files = await DB.getFilesFor(e.id);
     await DB.deleteEmail(e.id);
+    if (App.Sync) App.Sync.noteDeleted(e.id);
     if (S.selectedId === e.id) S.selectedId = null;
     S.checked.delete(e.id);
     App.renderAll();
-    toast(t('deleted'), '', { label: t('undo'), fn: async () => { S.emails.push(e); if (files.length) await DB.putFiles(files); await DB.putEmail(e); App.renderAll(); toast(t('restored'), 'success'); } });
+    toast(t('deleted'), '', { label: t('undo'), fn: async () => { S.emails.push(e); if (files.length) await DB.putFiles(files); await DB.putEmail(e); if (App.Sync) App.Sync.undoDeleted(e.id); App.renderAll(); toast(t('restored'), 'success'); } });
   }
   async function toggleVip(e) {
     const addr = (e.from.address || '').toLowerCase(); if (!addr) return;
@@ -439,7 +443,7 @@
     root.classList.toggle('selecting', S.checked.size > 0);
     if (!S.emails.length) {
       root.innerHTML = `<div class="list-empty">${icon('inbox', 'lg')}<h3>${t('empty_title')}</h3><p>${t('empty_sub')}</p>
-        <div class="empty-actions"><button class="btn btn-primary sm" data-act="import">${icon('upload', 'sm')}${t('btn_import')}</button><button class="btn sm" data-act="samples">${icon('zap', 'sm')}${t('btn_samples')}</button></div></div>`;
+        <div class="empty-actions"><button class="btn btn-primary sm" data-act="import">${icon('upload', 'sm')}${t('btn_import')}</button><button class="btn sm" data-act="restore">${icon('folder', 'sm')}${t('restore_short')}</button><button class="btn sm" data-act="samples">${icon('zap', 'sm')}${t('btn_samples')}</button></div></div>`;
       renderBulkBar(); return;
     }
     if (!list.length) { root.innerHTML = `<div class="list-empty">${icon('check-circle', 'lg')}<h3>${t('all_caught_up')}</h3><p>${t('all_caught_up_sub')}</p></div>`; renderBulkBar(); return; }
@@ -493,6 +497,7 @@
     renderFilters(); renderList(); updateCounts(); renderDetail();
     if (S.view === 'board') App.renderBoard();
     if (S.view === 'stats') App.renderStats();
+    if (App.Sync) App.Sync.renderStatus();
   }
   App.renderAll = renderAll;
 
@@ -550,12 +555,14 @@
         <div class="title-actions">
           <button class="icon-btn sm ${isVip(e) ? 'active' : ''}" data-h="vip" title="${isVip(e) ? t('unmark_vip') : t('mark_vip')}">${icon('star')}</button>
           <button class="icon-btn sm" data-h="snooze" title="${t('snooze')}">${icon('snooze')}</button>
+          ${e.dueAt ? `<button class="icon-btn sm" data-h="calendar" title="${t('add_to_calendar')}">${icon('calendar')}</button>` : ''}
+          <button class="icon-btn sm" data-h="print" title="${t('print_email')}">${icon('print')}</button>
           <button class="icon-btn sm" data-h="delete" title="${t('delete_email')}" style="color:var(--danger)">${icon('trash')}</button>
         </div></div>
       <div class="detail-sender">
         <div class="avatar lg" style="background:${avatarColor(e.from.address || name)}">${esc(initials(e.from.name, e.from.address))}</div>
         <div class="who"><div class="name" dir="auto">${esc(name)} ${isVip(e) ? `<span class="pill vip">${icon('star', 'sm')} ${t('vip')}</span>` : ''}${e.flags && e.flags.importance === 'high' ? `<span class="pill p1">!</span>` : ''}</div><div class="addr">${esc(e.from.address || '')}</div></div>
-        <div class="dates"><div>${t('detail_date')}: ${esc(fmtDateTime(e.date || e.addedAt))}</div><div>${t('detail_added')}: ${esc(fmtRelDay(e.addedAt))}</div></div>
+        <div class="dates"><div>${t('detail_date')}: ${esc(fmtDateTime(e.date || e.addedAt))}</div><div>${t('detail_added')}: ${esc(fmtRelDay(e.addedAt))}${App.Features && App.Features.senderCount(e) > 1 ? ` · <button class="linkish" data-h="sender">${t('sender_count', { n: App.Features.senderCount(e) })}</button>` : ''}</div></div>
       </div>
       <div class="detail-controls">
         <div class="ctrl"><span class="ctrl-label">${t('priority')}</span><div class="seg" data-h="priority">${prios().map(l => `<button class="${String(e.priority) === String(l.id) ? 'active p' + l.id : ''}" data-p="${l.id}" title="${esc(prioName(l.id))}"><span class="dot" style="color:${esc(l.color)}"></span>${prioShort(l.id)}</button>`).join('')}</div><span class="inline-note">${esc(prioName(e.priority))}</span>${e.priorityManual ? `<button class="btn xs btn-ghost" data-h="resetp" title="${t('reset_priority')}">${icon('refresh', 'sm')}${t('auto')}</button>` : ''}</div>
@@ -861,13 +868,14 @@
     $('#fileInput').onchange = (ev) => { importFiles(ev.target.files); ev.target.value = ''; };
     $('#btnPaste').onclick = openPasteModal;
     $('#btnSamples').onclick = loadSamples;
+    const ss = $('#syncStatus'); if (ss) ss.onclick = () => { const Y = App.Sync; if (!Y) return; if (!Y.state.dir) Y.askToProtect(true); else if (Y.state.status === 'needs-permission' || Y.state.status === 'error') Y.allow(); else showView('settings'); };
     $('#searchInput').addEventListener('input', debounce((ev) => { S.search = ev.target.value; renderList(); }, 150));
     $('#sortSelect').onchange = (ev) => { S.sort = ev.target.value; S.settings.sort = S.sort; saveSettings(); renderList(); };
     $('#filters').onclick = (ev) => { const b = ev.target.closest('[data-filter]'); if (!b) return; S.filter = b.dataset.filter; renderFilters(); renderList(); };
     // list clicks
     $('#emailList').addEventListener('click', (ev) => {
       const act = ev.target.closest('[data-act]');
-      if (act) { const a = act.dataset.act; if (a === 'import') $('#fileInput').click(); else if (a === 'samples') loadSamples(); else if (a === 'paste') openPasteModal(); return; }
+      if (act) { const a = act.dataset.act; if (a === 'import') $('#fileInput').click(); else if (a === 'restore') { if (App.Sync) App.Sync.openRestore(); } else if (a === 'samples') loadSamples(); else if (a === 'paste') openPasteModal(); return; }
       const item = ev.target.closest('.email-item'); if (!item) return;
       if (ev.target.classList.contains('check')) { if (ev.target.checked) S.checked.add(item.dataset.id); else S.checked.delete(item.dataset.id); renderList(); return; }
       select(item.dataset.id);
@@ -884,7 +892,7 @@
     $('#detailPane').addEventListener('click', async (ev) => {
       const e = App.getEmail(S.selectedId);
       const act = ev.target.closest('[data-act]');
-      if (act) { const a = act.dataset.act; if (a === 'import') $('#fileInput').click(); else if (a === 'samples') loadSamples(); else if (a === 'paste') openPasteModal(); return; }
+      if (act) { const a = act.dataset.act; if (a === 'import') $('#fileInput').click(); else if (a === 'restore') { if (App.Sync) App.Sync.openRestore(); } else if (a === 'samples') loadSamples(); else if (a === 'paste') openPasteModal(); return; }
       if (!e) return;
       const tab = ev.target.closest('[data-tab]'); if (tab) { S.tab = tab.dataset.tab; renderTabs(); renderTabContent(); const sc = $('#detailScroll'), tb = $('#detailTabs'); if (sc && tb) sc.scrollTo({ top: tb.offsetTop - 4, behavior: 'smooth' }); return; }
       if (ev.target.closest('#btnBack')) { S.selectedId = null; $('#inboxLayout').classList.remove('show-detail'); renderList(); renderDetail(); return; }
@@ -900,6 +908,9 @@
       else if (k === 'due') openDuePopover(h, e);
       else if (k === 'snooze') openSnoozePopover(h, e);
       else if (k === 'vip') toggleVip(e);
+      else if (k === 'calendar') App.Features.calendarEvent(e);
+      else if (k === 'print') App.Features.printEmail(e);
+      else if (k === 'sender') App.Features.showSender(e);
       else if (k === 'delete') { if (await confirmDialog(t('delete_confirm'), { danger: true, okLabel: t('delete') })) deleteEmail(e); }
       else if (k === 'tags') { const x = ev.target.closest('[data-tag]'); if (x) { e.tags = e.tags.filter(tg => tg !== x.dataset.tag); await saveEmail(e); renderDetailHead(); renderList(); } }
       else if (k === 'loadimages') { S.allowRemote.add(e.id); renderTabContent(); }
@@ -974,6 +985,7 @@
     renderAll();
     setInterval(checkDeadlines, 30000);
     checkDeadlines();
+    setTimeout(() => { if (App.Features) App.Features.dailyAgenda(); }, 2500);
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { navigator.serviceWorker.register('sw.js').catch(() => { }); }
     if (!S.settings.onboarded) setTimeout(openOnboarding, 300);
     if (App.initBackup) App.initBackup();

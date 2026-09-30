@@ -537,3 +537,21 @@ html[lang="ar"] .level-head { text-transform: none; letter-spacing: 0; font-size
 .note-file .ico { width: 32px; height: 32px; border-radius: 8px; background: var(--grad); color: #fff; display: grid; place-items: center; font-size: 10px; font-weight: 800; text-transform: uppercase; flex: none; }
 .note-file .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .note-file .sz { color: var(--muted); font-size: 12px; }
+
+
+/* ---------- 2.0: backup & sync status, restore, print ---------- */
+.sync-status { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--grad-soft); color: var(--text); text-align: start; cursor: pointer; }
+.sync-status .ic { width: 20px; height: 20px; flex: none; color: var(--muted); }
+.sync-status .txt { display: grid; min-width: 0; }
+.sync-status strong { font-size: 12.5px; line-height: 1.25; }
+.sync-status small { font-size: 11.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sync-status.on .ic { color: var(--success); }
+.sync-status.warn { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); background: var(--warning-soft); }
+.sync-status.warn .ic, .sync-status.warn strong { color: #b45309; }
+.sync-status.paused .ic, .sync-status.paused strong { color: var(--danger); }
+.sync-card { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--grad-soft); }
+.sync-card.on { border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
+.sync-card .status-line { font-weight: 600; color: var(--text); }
+.sync-card.on .status-line { color: var(--success); }
+.linkish { border: 0; background: none; padding: 0; color: var(--primary-text); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.print-frame { position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none; }

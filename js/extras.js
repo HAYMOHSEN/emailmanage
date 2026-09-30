@@ -122,14 +122,14 @@
       <div class="card wide"><div class="card-head"><div><h3>${icon('edit')}${t('settings_templates')}</h3><div class="sub">${esc(t('template_hint'))}</div></div><span class="spacer"></span><button class="btn sm" id="tplAdd">${icon('plus', 'sm')}${t('add_template')}</button></div>
         <div class="card-body form" id="tplList">${(s.templates || []).map((tp, i) => `<div class="template-item"><span class="pill tag">${tp.lang === 'ar' ? 'AR' : 'EN'}</span><span class="t" dir="auto">${esc(tp.title)}</span><span class="b" dir="auto">${esc(tp.body)}</span><button class="icon-btn sm" data-tpl-edit="${i}">${icon('edit', 'sm')}</button><button class="icon-btn sm" data-tpl-del="${i}" style="color:var(--danger)">${icon('trash', 'sm')}</button></div>`).join('') || `<div class="inline-note">—</div>`}</div></div>
 
-      <div class="card"><div class="card-head"><h3>${icon('folder')}${t('settings_backup')}</h3></div><div class="card-body form">
-        <div class="field"><label>${t('backup_folder')}</label><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn sm" id="bkChoose">${icon('folder', 'sm')}${t('choose_folder')}</button><span class="status-line" id="bkName"></span></div></div>
-        <label class="switch"><input type="checkbox" id="bkAuto" ${s.autoBackup ? 'checked' : ''}><span>${t('auto_backup')}</span></label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="bkNow">${icon('download', 'sm')}${t('backup_now')}</button><button class="btn sm" id="bkExport">${icon('download', 'sm')}${t('export_json')}</button><button class="btn sm" id="bkImport">${icon('upload', 'sm')}${t('import_json')}</button><input type="file" id="bkFile" accept=".json,application/json" hidden></div>
+      <div class="card wide"><div class="card-head"><div><h3>${icon('shield')}${t('settings_backup')}</h3><div class="sub">${t('sync_folder_hint')}</div></div></div><div class="card-body form">
+        <div class="sync-card ${App.Sync && App.Sync.isProtected() ? 'on' : ''}"><div class="status-line" id="bkStatus">${esc(App.Sync ? App.Sync.statusText() : '')}</div><p class="inline-note" style="margin:6px 0 0">${t('where_data')}</p></div>
+        <div class="field"><label>${t('backup_folder')}</label><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn sm btn-primary" id="bkChoose">${icon('folder', 'sm')}${App.Sync && App.Sync.state.dir ? t('choose_other_folder') : t('choose_folder')}</button><span class="pill tag" id="bkName">—</span>${App.Sync && App.Sync.state.dir ? `<button class="btn sm" id="bkNow">${icon('refresh', 'sm')}${t('sync_now')}</button><button class="btn sm" id="bkForget">${icon('x', 'sm')}${t('sync_forget')}</button>` : ''}</div></div>
+        <div class="field"><label>${t('export_import')}</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="bkExport">${icon('download', 'sm')}${t('export_json')}</button><button class="btn sm" id="bkImport">${icon('upload', 'sm')}${t('import_json')}</button><input type="file" id="bkFile" accept="application/json,.json" hidden><button class="btn sm" id="bkCsv">${icon('list', 'sm')}${t('export_csv')}</button></div><p class="inline-note" style="margin:6px 0 0">${t('sync_phone_hint')}</p></div>
         <div><button class="btn sm btn-danger" id="bkClear">${icon('trash', 'sm')}${t('clear_all')}</button></div>
       </div></div>
 
-      <div class="card"><div class="card-head"><h3>${icon('info')}${t('settings_about')}</h3></div><div class="card-body form"><p style="margin:0;font-size:13px;color:var(--text-2)">${t('about_text')}</p><div class="inline-note">${t('version')} ${App.APP_VERSION} · ${t('installed_hint')}</div><div><a href="privacy.html" target="_blank" rel="noopener">${t('privacy_policy')}</a></div></div></div>
+      <div class="card"><div class="card-head"><h3>${icon('info')}${t('settings_about')}</h3></div><div class="card-body form"><p style="margin:0;font-size:13px;color:var(--text-2)">${t('about_text')}</p><div class="inline-note">${t('version')} ${App.APP_VERSION} · ${t('installed_hint')}</div><div style="display:flex;gap:14px;flex-wrap:wrap"><a href="privacy.html" target="_blank" rel="noopener">${t('privacy_policy')}</a><a href="mailto:${App.SUPPORT_EMAIL}?subject=${encodeURIComponent('Email Management ' + App.APP_VERSION)}">${t('contact_developer')}</a></div></div></div>
     </div>`;
 
     // bindings
@@ -166,15 +166,16 @@
     $('#tplAdd', root).onclick = () => editTemplate(-1);
     $$('[data-tpl-edit]', root).forEach(b => b.onclick = () => editTemplate(+b.dataset.tplEdit));
     $$('[data-tpl-del]', root).forEach(b => b.onclick = () => { S.settings.templates.splice(+b.dataset.tplDel, 1); App.saveSettings(); renderSettings(); });
-    // backup
-    $('#bkChoose', root).onclick = chooseBackupFolder;
-    $('#bkAuto', root).onchange = (ev) => { S.settings.autoBackup = ev.target.checked; App.saveSettings(); };
-    $('#bkNow', root).onclick = () => backupNow(true);
+    // backup & sync
+    $('#bkChoose', root).onclick = async () => { if (await App.Sync.chooseFolder()) renderSettings(); };
+    const bkNow = $('#bkNow', root); if (bkNow) bkNow.onclick = async () => { await App.Sync.pull(); await App.Sync.write(true); };
+    const bkForget = $('#bkForget', root); if (bkForget) bkForget.onclick = async () => { await App.Sync.forgetFolder(); renderSettings(); };
+    $('#bkCsv', root).onclick = () => App.Features.exportCsv();
     $('#bkExport', root).onclick = exportJSON;
     $('#bkImport', root).onclick = () => $('#bkFile', root).click();
     $('#bkFile', root).onchange = (ev) => { if (ev.target.files[0]) importJSON(ev.target.files[0]); ev.target.value = ''; };
     $('#bkClear', root).onclick = async () => { if (await App.confirmDialog(t('clear_all_confirm'), { danger: true, okLabel: t('delete') })) { await DB.clearAll(); localStorage.removeItem('em.settings'); location.reload(); } };
-    showBackupName();
+    if (App.Sync) App.Sync.renderStatus();
   }
   App.renderSettings = renderSettings;
 
@@ -255,24 +256,7 @@
     };
   }
 
-  /* ---------- backup / export / import ---------- */
-  let dirHandle = null;
-  async function initBackup() {
-    try { dirHandle = await DB.kvGet('backupDir'); } catch (e) { dirHandle = null; }
-    if (dirHandle && S.settings.autoBackup) {
-      try { const p = await dirHandle.queryPermission({ mode: 'readwrite' }); if (p !== 'granted') toast(t('backup_permission'), '', { label: t('ok'), fn: () => dirHandle.requestPermission({ mode: 'readwrite' }) }); } catch (e) { /* ignore */ }
-    }
-  }
-  App.initBackup = initBackup;
-  async function showBackupName() {
-    const el = $('#bkName'); if (!el) return;
-    if (!window.showDirectoryPicker) { el.textContent = t('folder_unsupported'); return; }
-    el.textContent = dirHandle ? dirHandle.name : '—';
-  }
-  async function chooseBackupFolder() {
-    if (!window.showDirectoryPicker) { toast(t('folder_unsupported'), 'error'); return; }
-    try { dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'em-backup' }); await DB.kvSet('backupDir', dirHandle); showBackupName(); backupNow(true); } catch (e) { /* cancelled */ }
-  }
+  /* ---------- export / import (the folder backup and sync live in sync.js) ---------- */
   async function buildExport() {
     const files = await DB.getAllFiles();
     const b64 = async (blob) => { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(s); };
@@ -281,19 +265,6 @@
     const settings = Object.assign({}, S.settings); settings.ai = Object.assign({}, settings.ai, { apiKey: '' });
     return { app: 'email-management', version: App.APP_VERSION, exportedAt: new Date().toISOString(), settings, emails: S.emails, files: outFiles };
   }
-  async function backupNow(announce) {
-    if (!dirHandle) { if (announce) return chooseBackupFolder(); return; }
-    try {
-      const p = await dirHandle.requestPermission({ mode: 'readwrite' }); if (p !== 'granted') throw new Error('permission');
-      const data = await buildExport();
-      const name = 'email-management-backup.json';
-      const fh = await dirHandle.getFileHandle(name, { create: true });
-      const w = await fh.createWritable(); await w.write(JSON.stringify(data)); await w.close();
-      if (announce) toast(t('backup_done', { f: name }), 'success');
-    } catch (err) { if (announce) toast(t('backup_failed', { e: err.message || err }), 'error'); }
-  }
-  App.backupNow = backupNow;
-  App.scheduleAutoBackup = App.debounce(() => { if (S.settings.autoBackup && dirHandle) backupNow(false); }, 5000);
   async function exportJSON() {
     const data = await buildExport();
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
@@ -303,7 +274,9 @@
     }
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
-  async function importJSON(file) {
+  App.buildExport = buildExport;
+  async function importJSON(file, opts) {
+    opts = opts || {};
     try {
       const data = JSON.parse(await file.text());
       if (!data || !Array.isArray(data.emails)) throw new Error('format');
@@ -322,7 +295,11 @@
         ['myName', 'myRole', 'signature', 'officeHours'].forEach(k => { if (!cur[k] && inc[k]) cur[k] = inc[k]; });
         App.saveSettings();
       }
-      toast(t('import_done', { n }), 'success'); App.renderAll(); renderSettings();
-    } catch (err) { toast(t('import_failed', { f: file.name }), 'error'); }
+      if (!opts.silent) { toast(t('import_done', { n }), 'success'); renderSettings(); }
+      App.renderAll();
+      if (n && App.scheduleAutoBackup) App.scheduleAutoBackup();
+      return n;
+    } catch (err) { if (!opts.silent) toast(t('import_failed', { f: file.name }), 'error'); return 0; }
   }
+  App.importJSON = importJSON;
 })(window);
